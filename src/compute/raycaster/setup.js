@@ -1,10 +1,9 @@
 const Compute = `
-struct Faces {
+struct Instances {
   vertexCount : u32,
   instanceCount : u32,
   firstVertex : u32,
   firstInstance : u32,
-  data : array<f32>
 }
 
 struct Query {
@@ -14,21 +13,22 @@ struct Query {
   face : u32,
 }
 
-@group(0) @binding(0) var<storage, read> faces : Faces;
-@group(0) @binding(1) var<storage, read_write> query : Query;
-@group(0) @binding(2) var<storage, read_write> workgroups : array<u32, 3>;
+@group(0) @binding(0) var<storage, read> opaque : Instances;
+@group(0) @binding(1) var<storage, read> transparent : Instances;
+@group(0) @binding(2) var<storage, read_write> query : Query;
+@group(0) @binding(3) var<storage, read_write> workgroups : array<u32, 3>;
 
 @compute @workgroup_size(1)
 fn main() {
   query.distance = 0xFFFFFFFF;
-  workgroups[0] = u32(ceil(f32(faces.instanceCount) / 256));
+  workgroups[0] = u32(ceil(f32(opaque.instanceCount + transparent.instanceCount) / 256));
   workgroups[1] = 1;
   workgroups[2] = 1;
 }
 `;
 
 class RaycasterSetup {
-  constructor({ device, faces, query, workgroups }) {
+  constructor({ device, instances, query, workgroups }) {
     this.pipeline = device.createComputePipeline({
       layout: 'auto',
       compute: {
@@ -43,14 +43,18 @@ class RaycasterSetup {
       entries: [
         {
           binding: 0,
-          resource: { buffer: faces },
+          resource: { buffer: instances.opaque },
         },
         {
           binding: 1,
-          resource: { buffer: query.buffer },
+          resource: { buffer: instances.transparent },
         },
         {
           binding: 2,
+          resource: { buffer: query.buffer },
+        },
+        {
+          binding: 3,
           resource: { buffer: workgroups },
         },
       ],

@@ -1,15 +1,15 @@
 const Compute = ({ precision, size }) => `
-struct Face {
+struct Instance {
   origin : vec3<f32>,
   data : u32,
 }
 
-struct Faces {
+struct Instances {
   vertexCount : u32,
   instanceCount : u32,
   firstVertex : u32,
   firstInstance : u32,
-  data : array<Face, ${Math.ceil(size[0] * size[1] * size[2] * 0.5)}>
+  data : array<Instance, ${Math.ceil(size[0] * size[1] * size[2] * 0.5)}>
 }
 
 struct Query {
@@ -19,8 +19,9 @@ struct Query {
   face : u32,
 }
 
-@group(0) @binding(0) var<storage, read> faces : Faces;
-@group(0) @binding(1) var<storage, read_write> query : Query;
+@group(0) @binding(0) var<storage, read> opaque : Instances;
+@group(0) @binding(1) var<storage, read> transparent : Instances;
+@group(0) @binding(2) var<storage, read_write> query : Query;
 
 const quad = array<mat3x3<f32>, 2>(
   mat3x3<f32>(vec3<f32>(-0.5, -0.5, 0.5), vec3<f32>(0.5, -0.5, 0.5), vec3<f32>(0.5, 0.5, 0.5)),
@@ -62,14 +63,18 @@ fn intersectTriangle(a : vec3<f32>, b : vec3<f32>, c : vec3<f32>) -> f32 {
 
 @compute @workgroup_size(256)
 fn main(@builtin(global_invocation_id) id : vec3<u32>) {
-  let pos : vec3<i32> = vec3<i32>(id);
-  if (id.x >= faces.instanceCount) {
+  if (id.x >= (opaque.instanceCount + transparent.instanceCount)) {
     return;
   }
-  let instance : Face = faces.data[id.x];
+  var instance : Instance;
+  if (id.x >= opaque.instanceCount) {
+    instance = transparent.data[id.x - opaque.instanceCount];
+  } else {
+    instance = opaque.data[id.x];
+  }
   let face : u32 = instance.data & 0xFF;
-  let rotation : mat3x3<f32> = rotations[face];
   let position : vec3<f32> = instance.origin;
+  let rotation : mat3x3<f32> = rotations[face];
   for (var i : i32 = 0; i < 2; i++) {
     let d = intersectTriangle(
       rotation * quad[i][0] + position,
@@ -87,7 +92,7 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
 `;
 
 class RaycasterCompute {
-  constructor({ device, faces, precision, query, size, workgroups }) {
+  constructor({ device, instances, precision, query, size, workgroups }) {
     this.pipeline = device.createComputePipeline({
       layout: 'auto',
       compute: {
@@ -102,10 +107,14 @@ class RaycasterCompute {
       entries: [
         {
           binding: 0,
-          resource: { buffer: faces },
+          resource: { buffer: instances.opaque },
         },
         {
           binding: 1,
+          resource: { buffer: instances.transparent },
+        },
+        {
+          binding: 2,
           resource: { buffer: query.buffer },
         },
       ],

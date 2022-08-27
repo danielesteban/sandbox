@@ -49,7 +49,7 @@ fn main(face : FragmentInput) -> FragmentOutput {
 }
 `;
 
-const Cube = (device) => {
+const Cube = ({ device }) => {
   const index = device.createBuffer({
     mappedAtCreation: true,
     size: 36 * Uint16Array.BYTES_PER_ELEMENT,
@@ -108,7 +108,7 @@ const Cube = (device) => {
 class Cursor {
   constructor({ camera, device, samples }) {
     this.device = device;
-    this.geometry = Cube(device);
+    this.geometry = Cube({ device });
     this.pipeline = device.createRenderPipeline({
       layout: 'auto',
       vertex: {

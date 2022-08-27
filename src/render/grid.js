@@ -61,7 +61,7 @@ fn main(face : FragmentInput) -> FragmentOutput {
 }
 `;
 
-const Plane = (device) => {
+const Plane = ({ device }) => {
   const buffer = device.createBuffer({
     mappedAtCreation: true,
     size: 18 * Float32Array.BYTES_PER_ELEMENT,
@@ -82,7 +82,7 @@ const Plane = (device) => {
 class Grid {
   constructor({ background, camera, device, position, samples }) {
     this.device = device;
-    this.geometry = Plane(device);
+    this.geometry = Plane({ device });
     this.pipeline = device.createRenderPipeline({
       layout: 'auto',
       vertex: {

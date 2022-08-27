@@ -23,13 +23,13 @@ const Main = ({ adapter, device }) => {
   vec3.floor(center, vec3.scale(center, center, 0.5));
   vec3.set(camera.target, center[0], 0, center[2]);
 
-  const voxels = new Voxels({
+  const opaque = new Voxels({
     camera,
     device,
-    faces: volume.faces,
+    instances: volume.instances.opaque,
     samples: renderer.samples,
   });
-  renderer.scene.push(voxels);
+  renderer.scene.push(opaque);
 
   const grid = new Grid({
     background: renderer.background,
@@ -39,6 +39,16 @@ const Main = ({ adapter, device }) => {
     samples: renderer.samples,
   });
   renderer.scene.push(grid);
+
+  const transparent = new Voxels({
+    camera,
+    device,
+    geometry: opaque.geometry,
+    instances: volume.instances.transparent,
+    opacity: 0.8,
+    samples: renderer.samples,
+  });
+  renderer.scene.push(transparent);
 
   const cursor = new Cursor({
     camera,

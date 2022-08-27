@@ -54,7 +54,7 @@ fn main(voxel : VertexInput) -> VertexOutput {
 }
 `;
 
-const Fragment = `
+const Fragment = ({ opacity }) => `
 struct FragmentInput {
   @location(0) color : vec3<f32>,
   @location(1) normal : vec3<f32>,
@@ -69,13 +69,13 @@ struct FragmentOutput {
 @fragment
 fn main(face : FragmentInput) -> FragmentOutput {
   var output : FragmentOutput;
-  output.color = vec4<f32>(face.color, 1);
+  output.color = vec4<f32>(face.color, ${opacity});
   output.data = vec4<f32>(normalize(face.normal), face.depth);
   return output;
 }
 `;
 
-const Face = (device) => {
+const Face = ({ device }) => {
   const buffer = device.createBuffer({
     mappedAtCreation: true,
     size: 18 * Float32Array.BYTES_PER_ELEMENT,
@@ -94,10 +94,17 @@ const Face = (device) => {
 };
 
 class Voxels {
-  constructor({ camera, device, faces, samples }) {
+  constructor({
+    camera,
+    device,
+    geometry = null,
+    instances,
+    opacity = 1, 
+    samples,
+  }) {
     this.device = device;
-    this.faces = faces;
-    this.geometry = Face(device);
+    this.geometry = geometry || Face({ device });
+    this.instances = instances;
     this.pipeline = device.createRenderPipeline({
       layout: 'auto',
       vertex: {
@@ -137,10 +144,26 @@ class Voxels {
       fragment: {
         entryPoint: 'main',
         module: device.createShaderModule({
-          code: Fragment,
+          code: Fragment({ opacity }),
         }),
         targets: [
-          { format: 'rgba16float' },
+          {
+            format: 'rgba16float',
+            ...(opacity !== 1 ? {
+              blend: {
+                color: {
+                  srcFactor: 'src-alpha',
+                  dstFactor: 'one-minus-src-alpha',
+                  operation: 'add',
+                },
+                alpha: {
+                  srcFactor: 'src-alpha',
+                  dstFactor: 'one-minus-src-alpha',
+                  operation: 'add',
+                },
+              },
+            } : {}),
+          },
           { format: 'rgba16float' },
         ],
       },
@@ -169,12 +192,12 @@ class Voxels {
   }
 
   render(pass) {
-    const { bindings, faces, geometry, pipeline } = this;
+    const { bindings, geometry, instances, pipeline } = this;
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindings);
     pass.setVertexBuffer(0, geometry);
-    pass.setVertexBuffer(1, faces, 16);
-    pass.drawIndirect(faces, 0);
+    pass.setVertexBuffer(1, instances, 16);
+    pass.drawIndirect(instances, 0);
   }
 }
 

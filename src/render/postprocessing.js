@@ -46,7 +46,7 @@ fn main(@builtin(position) uv : vec4<f32>) -> @location(0) vec4<f32> {
 }
 `;
 
-const Screen = (device) => {
+const Screen = ({ device }) => {
   const buffer = device.createBuffer({
     mappedAtCreation: true,
     size: 18 * Float32Array.BYTES_PER_ELEMENT,
@@ -74,7 +74,7 @@ class Postprocessing {
         storeOp: 'store',
       }],
     };
-    this.geometry = Screen(device);
+    this.geometry = Screen({ device });
     this.pipeline = device.createRenderPipeline({
       layout: 'auto',
       vertex: {

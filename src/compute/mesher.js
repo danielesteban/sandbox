@@ -1,19 +1,20 @@
 const Compute = ({ size }) => `
-struct Face {
+struct Instance {
   origin : vec3<f32>,
   data : u32,
 }
 
-struct Faces {
+struct Instances {
   vertexCount : u32,
   instanceCount : atomic<u32>,
   firstVertex : u32,
   firstInstance : u32,
-  data : array<Face, ${Math.ceil(size[0] * size[1] * size[2] * 0.5)}>
+  data : array<Instance, ${Math.ceil(size[0] * size[1] * size[2] * 0.5)}>
 }
 
 @group(0) @binding(0) var<storage, read> data : array<u32, ${size[0] * size[1] * size[2]}>;
-@group(0) @binding(1) var<storage, read_write> faces : Faces;
+@group(0) @binding(1) var<storage, read_write> opaque : Instances;
+@group(0) @binding(2) var<storage, read_write> transparent : Instances;
 
 const faceNormals = array<vec3<i32>, 6>(
   vec3<i32>(0, 0, 1),
@@ -40,6 +41,28 @@ fn getValue(pos : vec3<i32>) -> u32 {
   return data[getVoxel(pos)];
 }
 
+fn isTransparent(value : u32) -> bool {
+  return (value & 0xFF) == 2;
+}
+
+fn instanceOpaque(neighbor : u32, origin : vec3<f32>, value : u32) {
+  if (neighbor == 0 || isTransparent(neighbor)) {
+    opaque.data[atomicAdd(&opaque.instanceCount, 1)] = Instance(
+      origin,
+      value
+    );
+  }
+}
+
+fn instanceTransparent(neighbor : u32, origin : vec3<f32>, value : u32) {
+  if (neighbor == 0) {
+    transparent.data[atomicAdd(&transparent.instanceCount, 1)] = Instance(
+      origin,
+      value
+    );
+  }
+}
+
 @compute @workgroup_size(64, 4)
 fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   let pos : vec3<i32> = vec3<i32>(id);
@@ -52,20 +75,22 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   }
   let origin : vec3<f32> = vec3<f32>(f32(pos.x) + 0.5, f32(pos.y) + 0.5, f32(pos.z) + 0.5);
   let color : u32 = value & 0xFFFFFF00;
+  let transparency : bool = isTransparent(value);
   for (var face : u32 = 0; face < 6; face++) {
     let npos : vec3<i32> = pos + faceNormals[face];
-    if (getValue(npos) == 0) {
-      faces.data[atomicAdd(&faces.instanceCount, 1)] = Face(
-        origin,
-        color + face
-      );
+    let nvalue : u32 = getValue(npos);
+    if (transparency) {
+      instanceTransparent(nvalue, origin, color + face);
+    } else {
+      instanceOpaque(nvalue, origin, color + face);
     }
   }
 }
 `;
 
 class Mesher {
-  constructor({ data, device, faces, size }) {
+  constructor({ data, device, instances, size }) {
+    this.instances = instances;
     this.pipeline = device.createComputePipeline({
       layout: 'auto',
       compute: {
@@ -84,11 +109,14 @@ class Mesher {
         },
         {
           binding: 1,
-          resource: { buffer: faces },
-        }
+          resource: { buffer: instances.opaque },
+        },
+        {
+          binding: 2,
+          resource: { buffer: instances.transparent },
+        },
       ],
     });
-    this.faces = faces;
     this.workgroups = new Uint32Array([
       Math.ceil(size[0] / 64),
       Math.ceil(size[1] / 4),
@@ -97,8 +125,9 @@ class Mesher {
   }
 
   compute(command) {
-    const { bindings, faces, pipeline, workgroups } = this;
-    command.clearBuffer(faces, 4, 4);
+    const { bindings, instances, pipeline, workgroups } = this;
+    command.clearBuffer(instances.opaque, 4, 4);
+    command.clearBuffer(instances.transparent, 4, 4);
     const pass = command.beginComputePass();
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindings);

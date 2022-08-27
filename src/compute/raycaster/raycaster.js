@@ -33,7 +33,7 @@ const _faceNormals = [
 ];
 
 class Raycaster {
-  constructor({ device, faces, precision = 10000, size }) {
+  constructor({ device, instances, precision = 10000, size }) {
     this.device = device;
     this.precision = precision;
     this.query = {
@@ -49,8 +49,8 @@ class Raycaster {
       usage: GPUBufferUsage.INDIRECT | GPUBufferUsage.STORAGE,
     });
     this.pipelines = {
-      compute: new Compute({ device, faces, precision, query: this.query, size, workgroups }),
-      setup: new Setup({ device, faces, query: this.query, workgroups }),
+      compute: new Compute({ device, instances, precision, query: this.query, size, workgroups }),
+      setup: new Setup({ device, instances, query: this.query, workgroups }),
     };
   }
 
