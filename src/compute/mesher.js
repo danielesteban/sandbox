@@ -73,16 +73,15 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   if (value == 0) {
     return;
   }
-  let origin : vec3<f32> = vec3<f32>(f32(pos.x) + 0.5, f32(pos.y) + 0.5, f32(pos.z) + 0.5);
   let color : u32 = value & 0xFFFFFF00;
-  let transparency : bool = isTransparent(value);
+  let isOpaque : bool = !isTransparent(value);
+  let origin : vec3<f32> = vec3<f32>(f32(pos.x) + 0.5, f32(pos.y) + 0.5, f32(pos.z) + 0.5);
   for (var face : u32 = 0; face < 6; face++) {
-    let npos : vec3<i32> = pos + faceNormals[face];
-    let nvalue : u32 = getValue(npos);
-    if (transparency) {
-      instanceTransparent(nvalue, origin, color + face);
+    let neighbor : u32 = getValue(pos + faceNormals[face]);
+    if (isOpaque) {
+      instanceOpaque(neighbor, origin, color + face);
     } else {
-      instanceOpaque(nvalue, origin, color + face);
+      instanceTransparent(neighbor, origin, color + face);
     }
   }
 }
