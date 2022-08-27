@@ -89,11 +89,13 @@ const Main = ({ adapter, device }) => {
     clock = time;
 
     input.update(delta);
-    camera.setOrbit(
-      input.look.state[0],
-      input.look.state[1],
-      input.zoom.state * 128
-    );
+    if (input.view.hasUpdated) {
+      camera.setOrbit(
+        input.view.state[0],
+        input.view.state[1],
+        input.zoom.state * 128
+      );
+    }
 
     const command = device.createCommandEncoder();
     if (input.buttons.reset) {
@@ -116,7 +118,7 @@ const Main = ({ adapter, device }) => {
     renderer.render(command);
     device.queue.submit([command.finish()]);
 
-    if (input.pointer.hasMoved) {
+    if (input.pointer.hasUpdated || input.view.hasUpdated) {
       const ray = volume.raycaster.getRay();
       ray.setFromCamera(camera, input.pointer.position);
       volume.raycaster

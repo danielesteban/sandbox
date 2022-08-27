@@ -1,8 +1,7 @@
 import { vec2, vec3 } from 'gl-matrix';
 
-const _direction = vec3.create();
-
 const _forward = vec3.create();
+const _movement = vec3.create();
 const _right = vec3.create();
 const _worldUp = vec3.fromValues(0, 1, 0);
 
@@ -13,10 +12,10 @@ class Input {
       secondary: false,
       reset: false,
     };
-    this.look = {
-      state: vec2.fromValues(Math.PI * 0.25, 0),
+    this.view = {
+      hasUpdated: false,
+      state: vec2.fromValues(Math.PI * 0.25 - 0.001, 0),
       target: vec2.fromValues(Math.PI * 0.25, 0),
-      direction: vec3.create(),
     };
     this.position = {
       state: position,
@@ -24,7 +23,7 @@ class Input {
     };
     this.keyboard = vec3.create();
     this.pointer = {
-      hasMoved: false,
+      hasUpdated: false,
       movement: vec2.create(),
       position: vec2.fromValues(-1, -1),
     };
@@ -113,8 +112,8 @@ class Input {
   onMouseMove({ clientX, clientY, movementX, movementY }) {
     const { sensitivity } = Input;
     const { pointer: { movement, position } } = this;
-    movement[0] -= movementX * sensitivity.look;
-    movement[1] -= movementY * sensitivity.look;
+    movement[0] -= movementX * sensitivity.view;
+    movement[1] -= movementY * sensitivity.view;
     vec2.set(
       position,
       (clientX / window.innerWidth) * 2 - 1,
@@ -152,46 +151,61 @@ class Input {
 
   update(delta) {
     const { minPhi, maxPhi } = Input;
-    const { buttons, keyboard, pointer, position, look, zoom } = this;
+    const { buttons, keyboard, pointer, position, view, zoom } = this;
+
+    pointer.hasUpdated = pointer.movement[0] !== 0 || pointer.movement[1] !== 0;
+    view.hasUpdated = false;
+
     if (buttons.secondary) {
-      look.target[1] += pointer.movement[0];
-      look.target[0] = Math.min(Math.max(look.target[0] + pointer.movement[1], minPhi), maxPhi);
+      view.target[1] += pointer.movement[0];
+      view.target[0] = Math.min(Math.max(view.target[0] + pointer.movement[1], minPhi), maxPhi);
     }
-    const damp = 1 - Math.exp(-10 * delta);
-    vec2.lerp(look.state, look.state, look.target, damp);
-    zoom.state = zoom.state * (1 - damp) + zoom.target * damp;
-    pointer.hasMoved = pointer.movement[0] !== 0 || pointer.movement[1] !== 0;
     vec2.set(pointer.movement, 0, 0);
 
-    vec3.set(
-      look.direction,
-      Math.sin(look.state[0]) * Math.sin(look.state[1]),
-      Math.cos(look.state[0]),
-      Math.sin(look.state[0]) * Math.cos(look.state[1])
-    );
+    const damp = 1 - Math.exp(-10 * delta);
+    if (Math.max(Math.abs(view.state[0] - view.target[0]), Math.abs(view.state[1] - view.target[1])) > 0.001) {
+      vec2.lerp(view.state, view.state, view.target, damp);
+      view.hasUpdated = true;
+    }
+    if (Math.abs(zoom.state - zoom.target) > 0.001) {
+      zoom.state = zoom.state * (1 - damp) + zoom.target * damp;
+      view.hasUpdated = true;
+    }
 
     if (keyboard[0] !== 0 || keyboard[1] !== 0 || keyboard[2] !== 0) {
-      vec3.copy(_forward, look.direction);
-      _forward[1] = 0;
+      vec3.set(
+        _forward,
+        Math.sin(view.state[0]) * Math.sin(view.state[1]),
+        0,
+        Math.sin(view.state[0]) * Math.cos(view.state[1])
+      );
       vec3.normalize(_forward, _forward);
       vec3.normalize(_right, vec3.cross(_right, _forward, _worldUp));
-      vec3.set(_direction, 0, 0, 0);
-      vec3.scaleAndAdd(_direction, _direction, _right, keyboard[0]);
-      vec3.scaleAndAdd(_direction, _direction, _worldUp, keyboard[1]);
-      vec3.scaleAndAdd(_direction, _direction, _forward, keyboard[2]);
+      vec3.zero(_movement);
+      vec3.scaleAndAdd(_movement, _movement, _right, keyboard[0]);
+      vec3.scaleAndAdd(_movement, _movement, _worldUp, keyboard[1]);
+      vec3.scaleAndAdd(_movement, _movement, _forward, keyboard[2]);
+      vec3.normalize(_movement, _movement);
       vec3.scaleAndAdd(
         position.target,
         position.target,
-        _direction,
+        _movement,
         delta * 100 * zoom.state
       );
     }
-    vec3.lerp(position.state, position.state, position.target, damp);
+    if (Math.max(
+      Math.abs(position.state[0] - position.target[0]),
+      Math.abs(position.state[1] - position.target[1]),
+      Math.abs(position.state[2] - position.target[2]),
+    ) > 0.001) {
+      vec3.lerp(position.state, position.state, position.target, damp);
+      view.hasUpdated = true;
+    }
   }
 }
 
 Input.sensitivity = {
-  look: 0.003,
+  view: 0.003,
   zoom: 0.0003,
 };
 Input.minPhi = 0.01;
