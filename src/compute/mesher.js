@@ -45,21 +45,15 @@ fn isTransparent(value : u32) -> bool {
   return (value & 0xFF) == 2;
 }
 
-fn instanceOpaque(neighbor : u32, origin : vec3<f32>, value : u32) {
+fn instanceOpaque(data : u32, neighbor : u32, origin : vec3<f32>) {
   if (neighbor == 0 || isTransparent(neighbor)) {
-    opaque.data[atomicAdd(&opaque.instanceCount, 1)] = Instance(
-      origin,
-      value
-    );
+    opaque.data[atomicAdd(&opaque.instanceCount, 1)] = Instance(origin, data);
   }
 }
 
-fn instanceTransparent(neighbor : u32, origin : vec3<f32>, value : u32) {
+fn instanceTransparent(data : u32, neighbor : u32, origin : vec3<f32>) {
   if (neighbor == 0) {
-    transparent.data[atomicAdd(&transparent.instanceCount, 1)] = Instance(
-      origin,
-      value
-    );
+    transparent.data[atomicAdd(&transparent.instanceCount, 1)] = Instance(origin, data);
   }
 }
 
@@ -77,11 +71,12 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   let isOpaque : bool = !isTransparent(value);
   let origin : vec3<f32> = vec3<f32>(f32(pos.x) + 0.5, f32(pos.y) + 0.5, f32(pos.z) + 0.5);
   for (var face : u32 = 0; face < 6; face++) {
+    let data : u32 = color + face;
     let neighbor : u32 = getValue(pos + faceNormals[face]);
     if (isOpaque) {
-      instanceOpaque(neighbor, origin, color + face);
+      instanceOpaque(data, neighbor, origin);
     } else {
-      instanceTransparent(neighbor, origin, color + face);
+      instanceTransparent(data, neighbor, origin);
     }
   }
 }
