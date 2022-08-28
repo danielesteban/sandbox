@@ -82,7 +82,7 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
       rotation * quad[i][2] + position
     );
     if (d != 0) {
-      let distance = u32(round(d * ${precision}));
+      let distance = u32(round(d / ${precision}));
       if (atomicMin(&query.distance, distance) > distance) {
         query.face = face;
       }

@@ -33,7 +33,7 @@ const _faceNormals = [
 ];
 
 class Raycaster {
-  constructor({ device, instances, precision = 10000, size }) {
+  constructor({ device, instances, precision = 0.0001, size }) {
     this.device = device;
     this.precision = precision;
     this.query = {
@@ -79,7 +79,7 @@ class Raycaster {
         if (distance === 0xFFFFFFFF) {
           return false;
         }
-        ray.result.distance = distance / precision;
+        ray.result.distance = distance * precision;
         vec3.scaleAndAdd(ray.result.position, ray.origin, ray.direction, ray.result.distance);
         vec3.copy(ray.result.normal, _faceNormals[face]);
         return true;
