@@ -13,7 +13,7 @@ const production = !process.env.ROLLUP_WATCH;
 const token = production ? (
   'AlgymO2uvZ0guv9kyO1adUr1t5hm9DEITRFlLrPYhA6lZxcTud6ztn/d2S5jxIlb0u4cRiZ4dXQsGLyNc6k6BgUAAABTeyJvcmlnaW4iOiJodHRwczovL3NhbmRib3guZ2F0dW5lcy5jb206NDQzIiwiZmVhdHVyZSI6IldlYkdQVSIsImV4cGlyeSI6MTY3NTIwOTU5OX0='
 ) : (
-  'AvyDIV+RJoYs8fn3W6kIrBhWw0te0klraoz04mw/nPb8VTus3w5HCdy+vXqsSzomIH745CT6B5j1naHgWqt/tw8AAABJeyJvcmlnaW4iOiJodHRwOi8vbG9jYWxob3N0OjgwODAiLCJmZWF0dXJlIjoiV2ViR1BVIiwiZXhwaXJ5IjoxNjYzNzE4Mzk5fQ=='
+  'AkoE8+yWvZMfOjxrWIWvq/aMz5KEEkAlww7Bx2CAzx3UG3J1wdvOGTgLm48isIN9VbQbJjo0AKfKDVktsf4q7AoAAABJeyJvcmlnaW4iOiJodHRwOi8vbG9jYWxob3N0OjgwODAiLCJmZWF0dXJlIjoiV2ViR1BVIiwiZXhwaXJ5IjoxNjc1MjA5NTk5fQ=='
 );
 
 export default {
