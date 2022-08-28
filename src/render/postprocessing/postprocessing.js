@@ -4,24 +4,24 @@ import Edges from './edges.js';
 
 const Vertex = `
 @vertex
-fn main(@location(0) position : vec4<f32>) -> @builtin(position) vec4<f32> {
-  return position;
+fn main(@location(0) position : vec2<f32>) -> @builtin(position) vec4<f32> {
+  return vec4<f32>(position, 1, 1);
 }
 `;
 
 const Screen = ({ device }) => {
   const buffer = device.createBuffer({
     mappedAtCreation: true,
-    size: 18 * Float32Array.BYTES_PER_ELEMENT,
+    size: 24 * Float32Array.BYTES_PER_ELEMENT,
     usage: GPUBufferUsage.VERTEX,
   });
   new Float32Array(buffer.getMappedRange()).set([
-    -1, -1,  1,
-     1, -1,  1,
-     1,  1,  1,
-     1,  1,  1,
-    -1,  1,  1,
-    -1, -1,  1,
+    -1, -1,     0.0, 1.0,
+     1, -1,     1.0, 1.0,
+     1,  1,     1.0, 0.0,
+     1,  1,     1.0, 0.0,
+    -1,  1,     0.0, 0.0,
+    -1, -1,     0.0, 1.0,
   ]);
   buffer.unmap();
   return buffer;
@@ -33,12 +33,12 @@ class Postprocessing {
     const vertex = {
       buffers: [
         {
-          arrayStride: 3 * Float32Array.BYTES_PER_ELEMENT,
+          arrayStride: 4 * Float32Array.BYTES_PER_ELEMENT,
           attributes: [
             {
               shaderLocation: 0,
               offset: 0,
-              format: 'float32x3',
+              format: 'float32x2',
             },
           ],
         },
@@ -50,7 +50,7 @@ class Postprocessing {
     };
     this.pipelines = {
       blur: new Blur({ device, geometry, vertex }),
-      composite: new Composite({ device, format, geometry, vertex }),
+      composite: new Composite({ device, format, geometry }),
       edges: new Edges({ device, geometry, vertex }),
     };
   }

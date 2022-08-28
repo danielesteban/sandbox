@@ -48,6 +48,7 @@ class Renderer {
     };
     this.postprocessing = new Postprocessing({ device, format });
     this.scene = [];
+    this.size = new Uint32Array(2);
     this.textures = new Map();
   }
 
@@ -79,11 +80,11 @@ class Renderer {
       canvas,
       descriptor,
       postprocessing,
+      size,
     } = this;
     const pixelRatio = window.devicePixelRatio || 1;
-    const size = [Math.floor(width * pixelRatio), Math.floor(height * pixelRatio)];
-    canvas.width = size[0];
-    canvas.height = size[1];
+    canvas.width = size[0] = Math.floor(width * pixelRatio);
+    canvas.height = size[1] = Math.floor(height * pixelRatio);
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
     camera.aspect = width / height;
