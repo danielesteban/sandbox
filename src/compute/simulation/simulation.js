@@ -11,16 +11,18 @@ class Simulation {
     });
     new Int32Array(uniforms.getMappedRange())[1] = size[1] - 1; 
     uniforms.unmap();
-    this.setup = new Setup({ device, size, uniforms: uniforms });
-    this.step = new Step({ data, device, size, uniforms: uniforms });
+    this.pipelines = {
+      setup: new Setup({ device, size, uniforms: uniforms }),
+      step: new Step({ data, device, size, uniforms: uniforms }),
+    };
   }
 
   compute(command) {
-    const { setup, size, step } = this;
+    const { pipelines, size } = this;
     const pass = command.beginComputePass();
     for (let y = 0; y < size[1]; y++) {
-      setup.compute(pass);
-      step.compute(pass);
+      pipelines.setup.compute(pass);
+      pipelines.step.compute(pass);
     }
     pass.end();
   }

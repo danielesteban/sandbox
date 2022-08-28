@@ -14,8 +14,8 @@ class Input {
     };
     this.view = {
       hasUpdated: false,
-      state: vec2.fromValues(Math.PI * 0.25 - 0.001, 0),
-      target: vec2.fromValues(Math.PI * 0.25, 0),
+      state: vec2.fromValues(Math.PI * 0.3 - 0.001, 0),
+      target: vec2.fromValues(Math.PI * 0.3, 0),
     };
     this.position = {
       state: position,
@@ -28,8 +28,8 @@ class Input {
       position: vec2.fromValues(-1, -1),
     };
     this.zoom = {
-      state: 0.8,
-      target: 0.8,
+      state: 0.5,
+      target: 0.5,
     };
     window.addEventListener('blur', this.onBlur.bind(this), false);
     target.addEventListener('contextmenu', this.onContextMenu.bind(this), false);

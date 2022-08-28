@@ -40,14 +40,15 @@ struct FragmentOutput {
   @location(1) data : vec4<f32>,
 }
 
+@group(0) @binding(0) var<uniform> background : vec3<f32>;
+
+const lineDensity : f32 = 0.01;
+
 fn getLine(pos : vec2<f32>, depth : f32) -> f32 {
   let p : vec2<f32> = abs(fract(pos - 0.5) - 0.5) / fwidth(pos);
   let intensity : f32 = 1.0 - min(min(p.x, p.y), 1.0);
-  let density : f32 = 0.01;
-  return intensity * exp(-density * density * depth * depth);
+  return intensity * 0.5 * exp(-lineDensity * lineDensity * depth * depth);
 }
-
-@group(0) @binding(0) var<uniform> background : vec3<f32>;
 
 @fragment
 fn main(face : FragmentInput) -> FragmentOutput {

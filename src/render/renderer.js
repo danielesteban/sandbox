@@ -1,4 +1,4 @@
-import Postprocessing from './postprocessing.js';
+import Postprocessing from './postprocessing/postprocessing.js';
 
 class Renderer {
   constructor({
@@ -35,7 +35,7 @@ class Renderer {
           storeOp: 'store',
         },
         {
-          clearValue: { r: 0, g: 0, b: 0, a: 0 },
+          clearValue: { r: 0, g: 0, b: 0, a: -camera.far },
           loadOp: 'clear',
           storeOp: 'store',
         },
@@ -92,7 +92,7 @@ class Renderer {
     this.updateTexture(descriptor.colorAttachments[0], 'rgba16float', 'color', size);
     this.updateTexture(descriptor.colorAttachments[1], 'rgba16float', 'data', size);
     this.updateTexture(descriptor.depthStencilAttachment, 'depth24plus', 'depth', size, false);
-    postprocessing.bindTextures(descriptor.colorAttachments);
+    postprocessing.updateTextures(descriptor.colorAttachments, size);
   }
 
   updateTexture(object, format, key, size, resolve = true) {
