@@ -1,11 +1,11 @@
 import './main.css';
 import { vec3 } from 'gl-matrix';
 import Camera from './render/camera.js';
+import Cursor from './render/cursor.js';
 import Grid from './render/grid.js';
 import Input from './render/input.js';
-import Cursor from './render/cursor.js';
 import Renderer from './render/renderer.js';
-import Toolbar from './toolbar.js';
+import Toolbar from './ui/toolbar.js';
 import Volume from './compute/volume.js';
 import Voxels from './render/voxels.js';
 

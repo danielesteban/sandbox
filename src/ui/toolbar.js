@@ -1,3 +1,5 @@
+import './toolbar.css';
+
 class Toolbar {
   constructor({ renderer }) {
     this.tool = 0;

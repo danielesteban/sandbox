@@ -28,7 +28,7 @@ struct FragmentInput {
 @group(0) @binding(1) var colorTexture : texture_2d<f32>;
 @group(0) @binding(2) var dataTexture : texture_2d<f32>;
 
-const blurDensity : f32 = 0.006;
+const blurDensity : f32 = 0.01;
 
 fn linearTosRGB(linear : vec3<f32>) -> vec3<f32> {
   if (all(linear <= vec3<f32>(0.0031308))) {
