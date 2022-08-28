@@ -65,7 +65,7 @@ class PostprocessingBlur {
     }
   }
   
-  updateTextures(color, size) {
+  updateTextures({ color, size }) {
     const { device, descriptors, directions, pipeline } = this;
     if (this.buffer) {
       this.buffer.texture.destroy();

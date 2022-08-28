@@ -55,18 +55,22 @@ class Postprocessing {
     };
   }
 
-  render(command, view) {
+  render(command, output) {
     const { pipelines } = this;
     pipelines.edges.render(command);
     pipelines.blur.render(command);
-    pipelines.composite.render(command, view);
+    pipelines.composite.render(command, output);
   }
 
-  updateTextures([color, data], size) {
+  updateTextures({ color, data, size }) {
     const { pipelines } = this;
-    pipelines.edges.updateTextures(color.resolveTarget, data.resolveTarget, size);
-    pipelines.blur.updateTextures(pipelines.edges.output.view, size);
-    pipelines.composite.updateTextures(pipelines.blur.output.view, pipelines.edges.output.view, data.resolveTarget);
+    pipelines.edges.updateTextures({ color, data, size });
+    pipelines.blur.updateTextures({ color: pipelines.edges.output.view, size });
+    pipelines.composite.updateTextures({
+      blur: pipelines.blur.output.view,
+      color: pipelines.edges.output.view,
+      data,
+    });
   }
 }
 

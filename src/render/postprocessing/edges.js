@@ -68,7 +68,7 @@ class PostprocessingEdges {
     pass.end();
   }
   
-  updateTextures(color, data, size) {
+  updateTextures({ color, data, size }) {
     const { device, descriptor, pipeline } = this;
     if (this.output) {
       this.output.texture.destroy();

@@ -92,7 +92,11 @@ class Renderer {
     this.updateTexture(descriptor.colorAttachments[0], 'rgba16float', 'color', size);
     this.updateTexture(descriptor.colorAttachments[1], 'rgba16float', 'data', size);
     this.updateTexture(descriptor.depthStencilAttachment, 'depth24plus', 'depth', size, false);
-    postprocessing.updateTextures(descriptor.colorAttachments, size);
+    postprocessing.updateTextures({
+      color: descriptor.colorAttachments[0].resolveTarget,
+      data: descriptor.colorAttachments[1].resolveTarget,
+      size,
+    });
   }
 
   updateTexture(object, format, key, size, resolve = true) {

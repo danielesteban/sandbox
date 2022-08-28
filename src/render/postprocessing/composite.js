@@ -50,9 +50,9 @@ class PostprocessingComposite {
     });
   }
 
-  render(command, view) {
+  render(command, output) {
     const { bindings, descriptor, geometry, pipeline } = this;
-    descriptor.colorAttachments[0].view = view;
+    descriptor.colorAttachments[0].view = output;
     const pass = command.beginRenderPass(descriptor);
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindings);
@@ -61,7 +61,7 @@ class PostprocessingComposite {
     pass.end();
   }
 
-  updateTextures(blur, color, data) {
+  updateTextures({ blur, color, data }) {
     const { device, pipeline } = this;
     this.bindings = device.createBindGroup({
       layout: pipeline.getBindGroupLayout(0),
