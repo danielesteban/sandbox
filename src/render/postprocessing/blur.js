@@ -19,7 +19,7 @@ fn main(@builtin(position) uv : vec4<f32>) -> @location(0) vec4<f32> {
 class PostprocessingBlur {
   constructor({ device, geometry, vertex }) {
     this.device = device;
-    this.descriptors = Array.from({ length: 2 }, () => ({
+    this.descriptors = Array.from({ length: 4 }, () => ({
       colorAttachments: [{
         clearValue: { r: 0, g: 0, b: 0, a: 1 },
         loadOp: 'clear',
@@ -55,7 +55,7 @@ class PostprocessingBlur {
 
   render(command) {
     const { bindings, descriptors, geometry, pipeline } = this;
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 4; i++) {
       const pass = command.beginRenderPass(descriptors[i]);
       pass.setPipeline(pipeline);
       pass.setBindGroup(0, bindings[i]);
@@ -73,33 +73,37 @@ class PostprocessingBlur {
     if (this.output) {
       this.output.texture.destroy();
     }
-    const createTexture = (attachment) => {
+    const createTexture = () => {
       const texture = device.createTexture({
         format: 'rgba16float',
         size,
         usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
       });
-      const view = texture.createView();
-      attachment.view = view;
-      return { texture, view };
+      return { texture, view: texture.createView() };
     };
-    this.buffer = createTexture(descriptors[0].colorAttachments[0]);
-    this.output = createTexture(descriptors[1].colorAttachments[0]);
-    this.bindings = [color, this.buffer.view].map((view, direction) => (
-      device.createBindGroup({
+    this.buffer = createTexture();
+    this.output = createTexture();
+    this.bindings = [
+      [color, this.buffer.view],
+      [this.buffer.view, this.output.view],
+      [this.output.view, this.buffer.view],
+      [this.buffer.view, this.output.view],
+    ].map(([input, output], i) => {
+      descriptors[i].colorAttachments[0].view = output
+      return device.createBindGroup({
         layout: pipeline.getBindGroupLayout(0),
         entries: [
           {
             binding: 0,
-            resource: { buffer: directions[direction] },
+            resource: { buffer: directions[i % 2] },
           },
           {
             binding: 1,
-            resource: view,
+            resource: input,
           },
         ],
-      })
-    ));
+      });
+    });
   }
 }
 
