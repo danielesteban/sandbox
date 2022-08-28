@@ -19,7 +19,7 @@ struct Camera {
 
 @group(0) @binding(0) var<uniform> camera : Camera;
 
-const faces = array<mat3x3<f32>, 6>(
+const rotations = array<mat3x3<f32>, 6>(
   mat3x3<f32>(vec3<f32>(1, 0, 0), vec3<f32>(0, 1, 0), vec3<f32>(0, 0, 1)),
   mat3x3<f32>(vec3<f32>(1, 0, 0), vec3<f32>(0, 0, -1), vec3<f32>(0, 1, 0)),
   mat3x3<f32>(vec3<f32>(1, 0, 0), vec3<f32>(0, 0, 1), vec3<f32>(0, -1, 0)),
@@ -42,7 +42,7 @@ fn sRGBToLinear(color : u32) -> vec3<f32> {
 
 @vertex
 fn main(voxel : VertexInput) -> VertexOutput {
-  let rotation : mat3x3<f32> = faces[voxel.data & 0xFF];
+  let rotation : mat3x3<f32> = rotations[voxel.data & 0xFF];
   let position : vec3<f32> = rotation * voxel.position + voxel.origin;
   let mvPosition : vec4<f32> = camera.view * vec4<f32>(position, 1);
   var out : VertexOutput;
