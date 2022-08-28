@@ -9,7 +9,7 @@ class RaycasterRay {
       usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
     });
     this.result = {
-      distance: -1,
+      distance: 0,
       position: vec3.create(),
       normal: vec3.create(),
     };
