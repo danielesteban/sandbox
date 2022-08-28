@@ -28,8 +28,8 @@ class Input {
       position: vec2.fromValues(-1, -1),
     };
     this.zoom = {
-      state: 0.5,
-      target: 0.5,
+      state: 0.75,
+      target: 0.75,
     };
     window.addEventListener('blur', this.onBlur.bind(this), false);
     target.addEventListener('contextmenu', this.onContextMenu.bind(this), false);

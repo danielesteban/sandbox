@@ -6,9 +6,9 @@ class Toolbar {
     tools.classList.add('tools');
     this.dom.appendChild(tools);
     this.tools = [
-      { id: 'sand', color: 0xEEEE66, noise: 20, radius: 4 },
-      { id: 'water', color: 0x6699EE, noise: 30, radius: 4 },
-      { id: 'void', color: 0x5588AA, radius: 4 }
+      { id: 'sand', color: 0xEEEE66, noise: 20, radius: 8 },
+      { id: 'water', color: 0x6699EE, noise: 30, radius: 8 },
+      { id: 'void', color: 0x5588AA, radius: 8 }
     ].map(({ id, color, noise, radius }, index) => {
       const tool = document.createElement('button');
       tool.color = color;
