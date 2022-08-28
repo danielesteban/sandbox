@@ -1,17 +1,16 @@
 const Fragment = `
-@group(0) @binding(0) var<uniform> direction : vec2<f32>;
+@group(0) @binding(0) var<uniform> direction : vec2<i32>;
 @group(0) @binding(1) var inputTexture : texture_2d<f32>;
 
 @fragment
 fn main(@builtin(position) uv : vec4<f32>) -> @location(0) vec4<f32> {
-  let off1 : vec2<f32> = vec2<f32>(1.3846153846) * direction;
-  let off2 : vec2<f32> = vec2<f32>(3.2307692308) * direction;
+  let pixel : vec2<i32> = vec2<i32>(floor(uv.xy));
   var color : vec3<f32>;
-  color += textureLoad(inputTexture, vec2<i32>(uv.xy), 0).xyz * 0.2270270270;
-  color += textureLoad(inputTexture, vec2<i32>(uv.xy + off1), 0).xyz * 0.3162162162;
-  color += textureLoad(inputTexture, vec2<i32>(uv.xy - off1), 0).xyz * 0.3162162162;
-  color += textureLoad(inputTexture, vec2<i32>(uv.xy + off2), 0).xyz * 0.0702702703;
-  color += textureLoad(inputTexture, vec2<i32>(uv.xy - off2), 0).xyz * 0.0702702703;
+  color += textureLoad(inputTexture, pixel, 0).xyz * 0.2270270270;
+  color += textureLoad(inputTexture, pixel + direction, 0).xyz * 0.3162162162;
+  color += textureLoad(inputTexture, pixel - direction, 0).xyz * 0.3162162162;
+  color += textureLoad(inputTexture, pixel + direction * 3, 0).xyz * 0.0702702703;
+  color += textureLoad(inputTexture, pixel - direction * 3, 0).xyz * 0.0702702703;
   return vec4<f32>(color, 1);
 }
 `;
@@ -29,10 +28,10 @@ class PostprocessingBlur {
     this.directions = [[1, 0], [0, 1]].map((direction) => {
       const buffer = device.createBuffer({
         mappedAtCreation: true,
-        size: 2 * Float32Array.BYTES_PER_ELEMENT,
+        size: 2 * Int32Array.BYTES_PER_ELEMENT,
         usage: GPUBufferUsage.UNIFORM,
       });
-      new Float32Array(buffer.getMappedRange()).set(direction);
+      new Int32Array(buffer.getMappedRange()).set(direction);
       buffer.unmap();
       return buffer;
     });
