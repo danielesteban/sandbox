@@ -44,10 +44,10 @@ fn main(fragment : FragmentInput) -> @location(0) vec4<f32> {
   let color : vec3<f32> = textureLoad(colorTexture, pixel, 0).xyz;
   let depth : f32 = textureLoad(dataTexture, pixel, 0).w;
   let dist : f32 = distance(fragment.uv, vec2<f32>(0.5));
-  let blurIntensity : f32 = 1 - exp(-blurDensity * blurDensity * depth * depth);
-  let blurVignette : f32 = 0.4 + smoothstep(-0.2, 0.2, 0.4 - dist) * 0.6;
   let vignette : f32 = 0.6 + smoothstep(-0.1, 0.1, 0.6 - dist) * 0.4;
-  return vec4<f32>(linearTosRGB(mix(color, blur, blurIntensity * blurVignette) * vignette), 1);
+  let blurVignette : f32 = 1 - smoothstep(-0.2, 0.2, 0.4 - dist) * 0.6;
+  let blurIntensity : f32 = (1 - exp(-blurDensity * blurDensity * depth * depth)) * blurVignette;
+  return vec4<f32>(linearTosRGB(mix(color, blur, blurIntensity) * vignette), 1);
 }
 `;
 
