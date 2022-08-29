@@ -16,7 +16,7 @@ fn main(@builtin(position) uv : vec4<f32>) -> @location(0) vec4<f32> {
 `;
 
 class PostprocessingBlur {
-  constructor({ device, geometry, vertex }) {
+  constructor({ device, size, vertex }) {
     this.device = device;
     this.descriptors = Array.from({ length: 4 }, () => ({
       colorAttachments: [{
@@ -35,7 +35,6 @@ class PostprocessingBlur {
       buffer.unmap();
       return buffer;
     });
-    this.geometry = geometry;
     this.pipeline = device.createRenderPipeline({
       layout: 'auto',
       vertex,
@@ -50,22 +49,22 @@ class PostprocessingBlur {
         topology: 'triangle-list',
       },
     });
+    this.size = size.data;
   }
 
   render(command) {
-    const { bindings, descriptors, geometry, pipeline } = this;
+    const { bindings, descriptors, pipeline } = this;
     for (let i = 0; i < 4; i++) {
       const pass = command.beginRenderPass(descriptors[i]);
       pass.setPipeline(pipeline);
       pass.setBindGroup(0, bindings[i]);
-      pass.setVertexBuffer(0, geometry);
-      pass.draw(6, 1, 0, 0);
+      pass.draw(6);
       pass.end();
     }
   }
   
-  updateTextures({ color, size }) {
-    const { device, descriptors, directions, pipeline } = this;
+  updateTextures({ color }) {
+    const { device, descriptors, directions, pipeline, size } = this;
     if (this.buffer) {
       this.buffer.texture.destroy();
     }

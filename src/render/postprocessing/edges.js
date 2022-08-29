@@ -32,7 +32,7 @@ fn main(@builtin(position) uv : vec4<f32>) -> @location(0) vec4<f32> {
 `;
 
 class PostprocessingEdges {
-  constructor({ device, geometry, vertex }) {
+  constructor({ device, size, vertex }) {
     this.device = device;
     this.descriptor = {
       colorAttachments: [{
@@ -41,7 +41,6 @@ class PostprocessingEdges {
         storeOp: 'store',
       }],
     };
-    this.geometry = geometry;
     this.pipeline = device.createRenderPipeline({
       layout: 'auto',
       vertex,
@@ -56,20 +55,20 @@ class PostprocessingEdges {
         topology: 'triangle-list',
       },
     });
+    this.size = size.data;
   }
 
   render(command) {
-    const { bindings, descriptor, geometry, pipeline } = this;
+    const { bindings, descriptor, pipeline } = this;
     const pass = command.beginRenderPass(descriptor);
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindings);
-    pass.setVertexBuffer(0, geometry);
-    pass.draw(6, 1, 0, 0);
+    pass.draw(6);
     pass.end();
   }
   
-  updateTextures({ color, data, size }) {
-    const { device, descriptor, pipeline } = this;
+  updateTextures({ color, data }) {
+    const { device, descriptor, pipeline, size } = this;
     if (this.output) {
       this.output.texture.destroy();
     }

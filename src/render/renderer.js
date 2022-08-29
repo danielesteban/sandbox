@@ -46,9 +46,15 @@ class Renderer {
         depthStoreOp: 'store',
       },
     };
-    this.postprocessing = new Postprocessing({ device, format });
+    this.size = {
+      buffer: device.createBuffer({
+        size: 2 * Float32Array.BYTES_PER_ELEMENT,
+        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM,
+      }),
+      data: new Float32Array(2),
+    };
+    this.postprocessing = new Postprocessing({ device, format, size: this.size });
     this.scene = [];
-    this.size = new Uint32Array(2);
     this.textures = new Map();
   }
 
@@ -79,29 +85,30 @@ class Renderer {
       camera,
       canvas,
       descriptor,
+      device,
       postprocessing,
       size,
     } = this;
     const pixelRatio = window.devicePixelRatio || 1;
-    canvas.width = size[0] = Math.floor(width * pixelRatio);
-    canvas.height = size[1] = Math.floor(height * pixelRatio);
+    canvas.width = size.data[0] = Math.floor(width * pixelRatio);
+    canvas.height = size.data[1] = Math.floor(height * pixelRatio);
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
     camera.aspect = width / height;
     camera.updateProjection();
+    device.queue.writeBuffer(size.buffer, 0, size.data);
 
-    this.updateTexture(descriptor.colorAttachments[0], 'rgba16float', 'color', size);
-    this.updateTexture(descriptor.colorAttachments[1], 'rgba16float', 'data', size);
-    this.updateTexture(descriptor.depthStencilAttachment, 'depth24plus', 'depth', size, false);
+    this.updateTexture(descriptor.colorAttachments[0], 'rgba16float', 'color');
+    this.updateTexture(descriptor.colorAttachments[1], 'rgba16float', 'data');
+    this.updateTexture(descriptor.depthStencilAttachment, 'depth24plus', 'depth', false);
     postprocessing.updateTextures({
       color: descriptor.colorAttachments[0].resolveTarget,
       data: descriptor.colorAttachments[1].resolveTarget,
-      size,
     });
   }
 
-  updateTexture(object, format, key, size, resolve = true) {
-    const { device, samples, textures } = this;
+  updateTexture(object, format, key, resolve = true) {
+    const { device, samples, size: { data: size }, textures } = this;
     const current = textures.get(key);
     if (current) {
       current.forEach((texture) => texture.destroy());
