@@ -1,6 +1,6 @@
 const Fragment = `
-@group(0) @binding(0) var noiseTexture : texture_2d<f32>;
-@group(0) @binding(1) var<uniform> size : vec2<f32>;
+@group(0) @binding(0) var<uniform> size : vec2<f32>;
+@group(0) @binding(1) var noiseTexture : texture_2d<f32>;
 @group(1) @binding(0) var blurTexture : texture_2d<f32>;
 @group(1) @binding(1) var colorTexture : texture_2d<f32>;
 @group(1) @binding(2) var dataTexture : texture_2d<f32>;
@@ -30,6 +30,18 @@ fn main(@builtin(position) uv : vec4<f32>) -> @location(0) vec4<f32> {
 }
 `;
 
+const Noise = ({ device }) => {
+  const texture = device.createTexture({
+    format: 'r32float',
+    size: [256, 256],
+    usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING,
+  });
+  const data = new Float32Array(256 * 256);
+  for (let i = 0; i < (256 * 256); i++) data[i] = Math.random();
+  device.queue.writeTexture({ texture }, data, { bytesPerRow: 256 * Float32Array.BYTES_PER_ELEMENT }, [256, 256]);
+  return texture.createView();
+};
+
 class PostprocessingComposite {
   constructor({ device, format, size, vertex }) {
     this.device = device;
@@ -54,25 +66,17 @@ class PostprocessingComposite {
         topology: 'triangle-list',
       },
     });
-    const n = new Float32Array(256 * 256);
-    for (let i = 0; i < (256 * 256); i++) n[i] = Math.random();
-    const noise = device.createTexture({
-      format: 'r32float',
-      size: [256, 256],
-      usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING,
-    });
-    device.queue.writeTexture({ texture: noise }, n, { bytesPerRow: 256 * Float32Array.BYTES_PER_ELEMENT }, [256, 256]);
     this.uniforms = device.createBindGroup({
       layout: this.pipeline.getBindGroupLayout(0),
       entries: [
         {
           binding: 0,
-          resource: noise.createView(),
+          resource: { buffer: size.buffer },
         },
         {
           binding: 1,
-          resource: { buffer: size.buffer },
-        }
+          resource: Noise({ device }),
+        },
       ],
     });
   }
