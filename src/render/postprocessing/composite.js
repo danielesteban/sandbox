@@ -1,5 +1,6 @@
 const Fragment = `
-@group(0) @binding(0) var<uniform> size : vec2<f32>;
+@group(0) @binding(0) var noiseTexture : texture_2d<f32>;
+@group(0) @binding(1) var<uniform> size : vec2<f32>;
 @group(1) @binding(0) var blurTexture : texture_2d<f32>;
 @group(1) @binding(1) var colorTexture : texture_2d<f32>;
 @group(1) @binding(2) var dataTexture : texture_2d<f32>;
@@ -16,6 +17,7 @@ fn linearTosRGB(linear : vec3<f32>) -> vec3<f32> {
 @fragment
 fn main(@builtin(position) uv : vec4<f32>) -> @location(0) vec4<f32> {
   let pixel : vec2<i32> = vec2<i32>(floor(uv.xy));
+  let noise : f32 = textureLoad(noiseTexture, (pixel / 2) % vec2<i32>(256), 0).x;
   let blur : vec3<f32> = textureLoad(blurTexture, pixel, 0).xyz;
   let color : vec3<f32> = textureLoad(colorTexture, pixel, 0).xyz;
   let depth : f32 = textureLoad(dataTexture, pixel, 0).w;
@@ -23,7 +25,8 @@ fn main(@builtin(position) uv : vec4<f32>) -> @location(0) vec4<f32> {
   let vignette : f32 = 0.6 + smoothstep(-0.1, 0.1, 0.6 - dist) * 0.4;
   let blurVignette : f32 = 1 - smoothstep(-0.2, 0.2, 0.4 - dist) * 0.6;
   let blurIntensity : f32 = (1 - exp(-blurDensity * blurDensity * depth * depth)) * blurVignette;
-  return vec4<f32>(linearTosRGB(mix(color, blur, blurIntensity) * vignette), 1);
+  let out : vec3<f32> = mix(color, blur, blurIntensity);
+  return vec4<f32>(linearTosRGB(out * vignette + mix(-0.005, 0.005, noise)), 1);
 }
 `;
 
@@ -51,12 +54,26 @@ class PostprocessingComposite {
         topology: 'triangle-list',
       },
     });
+    const n = new Float32Array(256 * 256);
+    for (let i = 0; i < (256 * 256); i++) n[i] = Math.random();
+    const noise = device.createTexture({
+      format: 'r32float',
+      size: [256, 256],
+      usage: GPUTextureUsage.COPY_DST | GPUTextureUsage.TEXTURE_BINDING,
+    });
+    device.queue.writeTexture({ texture: noise }, n, { bytesPerRow: 256 * Float32Array.BYTES_PER_ELEMENT }, [256, 256]);
     this.uniforms = device.createBindGroup({
       layout: this.pipeline.getBindGroupLayout(0),
-      entries: [{
-        binding: 0,
-        resource: { buffer: size.buffer },
-      }],
+      entries: [
+        {
+          binding: 0,
+          resource: noise.createView(),
+        },
+        {
+          binding: 1,
+          resource: { buffer: size.buffer },
+        }
+      ],
     });
   }
 
