@@ -12,7 +12,11 @@ import Voxels from './render/voxels.js';
 const Main = ({ adapter, device }) => {
   const camera = new Camera({ device });
   const renderer = new Renderer({ adapter, camera, device });
-  const volume = new Volume({ device, size: vec3.fromValues(320, 64, 320) });
+  const volume = new Volume({
+    device,
+    size: vec3.fromValues(512, 96, 512),
+    chunkSize: vec3.fromValues(256, 96, 256),
+  });
   document.getElementById('renderer').appendChild(renderer.canvas);
   renderer.setSize(window.innerWidth, window.innerHeight);
   window.addEventListener('resize', () => (
@@ -25,8 +29,8 @@ const Main = ({ adapter, device }) => {
 
   const opaque = new Voxels({
     camera,
+    chunks: volume.chunks,
     device,
-    instances: volume.instances.opaque,
     samples: renderer.samples,
   });
   renderer.scene.push(opaque);
@@ -42,9 +46,9 @@ const Main = ({ adapter, device }) => {
 
   const transparent = new Voxels({
     camera,
+    chunks: volume.chunks,
     device,
     geometry: opaque.geometry,
-    instances: volume.instances.transparent,
     opacity: 0.8,
     samples: renderer.samples,
   });
@@ -93,7 +97,7 @@ const Main = ({ adapter, device }) => {
       camera.setOrbit(
         input.view.state[0],
         input.view.state[1],
-        input.zoom.state * 128
+        input.zoom.state * 256
       );
     }
 
@@ -107,7 +111,7 @@ const Main = ({ adapter, device }) => {
       const { color, noise, radius } = toolbar.tools[toolbar.tool];
       let value = 0;
       if (toolbar.tool !== 2) {
-        position[1] = Math.min(position[1] + 32, volume.size[1] - 1);
+        position[1] = Math.min(position[1] + radius * 3, volume.size[1] - 1);
         value = (color << 8) + (toolbar.tool + 1);
       }
       volume.update.compute(

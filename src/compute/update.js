@@ -11,9 +11,10 @@ struct Noise {
   offset : atomic<u32>,
 }
 
-@group(0) @binding(0) var<storage, read_write> data : array<u32, ${size[0] * size[1] * size[2]}>;
-@group(0) @binding(1) var<storage, read> input : Input;
-@group(0) @binding(2) var<storage, read_write> noise : Noise;
+@group(0) @binding(0) var<storage, read> input : Input;
+@group(0) @binding(1) var<storage, read_write> noise : Noise;
+@group(1) @binding(0) var<storage, read_write> data : array<u32, ${size[0] * size[1] * size[2]}>;
+@group(1) @binding(1) var<uniform> chunk : vec2<i32>;
 
 const size : vec3<i32> = vec3<i32>(${size[0]}, ${size[1]}, ${size[2]});
 
@@ -28,16 +29,12 @@ fn applyNoise(color : u32) -> u32 {
 @compute @workgroup_size(3, 3, 3)
 fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   let offset : vec3<i32> = vec3<i32>(id) - vec3<i32>(input.radius);
-  if (
-    any(offset >= vec3<i32>(input.radius))
-    || length(vec3<f32>(offset)) > (f32(input.radius) - 0.5)
-  ) {
-    return;
-  }
-  let pos : vec3<i32> = input.position + offset;
+  let pos : vec3<i32> = input.position - vec3<i32>(chunk.x, 0, chunk.y) + offset;
   if (
     any(pos < vec3<i32>(0))
     || any(pos >= size)
+    || any(offset >= vec3<i32>(input.radius))
+    || length(vec3<f32>(offset)) > (f32(input.radius) - 0.5)
   ) {
     return;
   }
@@ -53,7 +50,8 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
 `;
 
 class Update {
-  constructor({ data, device, size }) {
+  constructor({ chunks, device, size }) {
+    this.chunks = chunks;
     this.device = device;
     {
       const data = new Int32Array(6);
@@ -91,14 +89,10 @@ class Update {
       entries: [
         {
           binding: 0,
-          resource: { buffer: data },
-        },
-        {
-          binding: 1,
           resource: { buffer: this.input.buffer },
         },
         {
-          binding: 2,
+          binding: 1,
           resource: { buffer: noise },
         },
       ],
@@ -106,7 +100,7 @@ class Update {
   }
 
   compute(command, position, noise, radius, value) {
-    const { bindings, device, input, pipeline } = this;
+    const { bindings, chunks, device, input, pipeline } = this;
     input.position[0] = position[0];
     input.position[1] = position[1];
     input.position[2] = position[2];
@@ -118,7 +112,25 @@ class Update {
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindings);
     const workgroups = Math.ceil((radius * 2 + 1) / 3);
-    pass.dispatchWorkgroups(workgroups, workgroups, workgroups);
+    chunks.forEach(({ bindings, data, position }) => {
+      if (!bindings.update) {
+        bindings.update = device.createBindGroup({
+          layout: pipeline.getBindGroupLayout(1),
+          entries: [
+            {
+              binding: 0,
+              resource: { buffer: data },
+            },
+            {
+              binding: 1,
+              resource: { buffer: position },
+            },
+          ],
+        });
+      }
+      pass.setBindGroup(1, bindings.update);
+      pass.dispatchWorkgroups(workgroups, workgroups, workgroups);
+    });
     pass.end();
   }
 }

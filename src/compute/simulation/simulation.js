@@ -2,7 +2,8 @@ import Setup from './setup.js';
 import Step from './step.js';
 
 class Simulation {
-  constructor({ data, device, size }) {
+  constructor({ chunks, device, extents, size }) {
+    this.chunks = chunks;
     this.size = size;
     const uniforms = device.createBuffer({
       mappedAtCreation: true,
@@ -13,16 +14,18 @@ class Simulation {
     uniforms.unmap();
     this.pipelines = {
       setup: new Setup({ device, size, uniforms: uniforms }),
-      step: new Step({ data, device, size, uniforms: uniforms }),
+      step: new Step({ device, extents, size, uniforms: uniforms }),
     };
   }
 
   compute(command) {
-    const { pipelines, size } = this;
+    const { chunks, pipelines, size } = this;
     const pass = command.beginComputePass();
     for (let y = 0; y < size[1]; y++) {
       pipelines.setup.compute(pass);
-      pipelines.step.compute(pass);
+      chunks.forEach((chunk) => {
+        pipelines.step.compute(pass, chunk);
+      });
     }
     pass.end();
   }

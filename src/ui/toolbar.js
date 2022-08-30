@@ -8,9 +8,9 @@ class Toolbar {
     tools.classList.add('tools');
     this.dom.appendChild(tools);
     this.tools = [
-      { id: 'sand', color: 0xEEEE66, noise: 20, radius: 8 },
-      { id: 'water', color: 0x6699EE, noise: 30, radius: 8 },
-      { id: 'void', color: 0x5588AA, radius: 8 }
+      { id: 'sand', color: 0xEEEE66, noise: 48, radius: 12 },
+      { id: 'water', color: 0x6699EE, noise: 32, radius: 12 },
+      { id: 'void', color: 0x5588AA, radius: 12 }
     ].map(({ id, color, noise, radius }, index) => {
       const tool = document.createElement('button');
       tool.color = color;
@@ -53,7 +53,7 @@ class Toolbar {
       this.radius = document.createElement('input');
       this.radius.type = 'range';
       this.radius.min = 1;
-      this.radius.max = 16;
+      this.radius.max = 24;
       this.radius.value = this.tools[this.tool].radius;
       this.radius.addEventListener('input', () => {
         this.tools[this.tool].radius = parseInt(this.radius.value, 10);
@@ -62,7 +62,7 @@ class Toolbar {
       this.noise = document.createElement('input');
       this.noise.type = 'range';
       this.noise.min = 0;
-      this.noise.max = 64;
+      this.noise.max = 128;
       this.noise.value = this.tools[this.tool].noise;
       this.noise.addEventListener('input', () => {
         this.tools[this.tool].noise = parseInt(this.noise.value, 10);

@@ -19,9 +19,9 @@ struct Query {
   face : u32,
 }
 
-@group(0) @binding(0) var<storage, read> opaque : Instances;
-@group(0) @binding(1) var<storage, read> transparent : Instances;
-@group(0) @binding(2) var<storage, read_write> query : Query;
+@group(0) @binding(0) var<storage, read_write> query : Query;
+@group(1) @binding(0) var<storage, read> opaque : Instances;
+@group(1) @binding(1) var<storage, read> transparent : Instances;
 
 const quad = array<mat3x3<f32>, 2>(
   mat3x3<f32>(vec3<f32>(-0.5, -0.5, 0.5), vec3<f32>(0.5, -0.5, 0.5), vec3<f32>(0.5, 0.5, 0.5)),
@@ -92,7 +92,8 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
 `;
 
 class RaycasterCompute {
-  constructor({ device, instances, precision, query, size, workgroups }) {
+  constructor({ device, precision, query, size, workgroups }) {
+    this.device = device;
     this.pipeline = device.createComputePipeline({
       layout: 'auto',
       compute: {
@@ -107,14 +108,6 @@ class RaycasterCompute {
       entries: [
         {
           binding: 0,
-          resource: { buffer: instances.opaque },
-        },
-        {
-          binding: 1,
-          resource: { buffer: instances.transparent },
-        },
-        {
-          binding: 2,
           resource: { buffer: query.buffer },
         },
       ],
@@ -122,10 +115,26 @@ class RaycasterCompute {
     this.workgroups = workgroups;
   }
 
-  compute(pass) {
-    const { bindings, pipeline, workgroups } = this;
+  compute(pass, chunk) {
+    const { bindings, device, pipeline, workgroups } = this;
+    if (!chunk.bindings.raycasterCompute) {
+      chunk.bindings.raycasterCompute = device.createBindGroup({
+        layout: pipeline.getBindGroupLayout(1),
+        entries: [
+          {
+            binding: 0,
+            resource: { buffer: chunk.instances.opaque },
+          },
+          {
+            binding: 1,
+            resource: { buffer: chunk.instances.transparent },
+          },
+        ],
+      });
+    }
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindings);
+    pass.setBindGroup(1, chunk.bindings.raycasterCompute);
     pass.dispatchWorkgroupsIndirect(workgroups, 0);
   }
 }

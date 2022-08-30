@@ -96,15 +96,15 @@ const Face = ({ device }) => {
 class Voxels {
   constructor({
     camera,
+    chunks,
     device,
     geometry = null,
-    instances,
     opacity = 1, 
     samples,
   }) {
+    this.chunks = chunks;
     this.device = device;
     this.geometry = geometry || Face({ device });
-    this.instances = instances;
     this.pipeline = device.createRenderPipeline({
       layout: 'auto',
       vertex: {
@@ -189,15 +189,19 @@ class Voxels {
         },
       ],
     });
+    this.key = opacity !== 1 ? 'transparent' : 'opaque';
   }
 
   render(pass) {
-    const { bindings, geometry, instances, pipeline } = this;
+    const { bindings, chunks, geometry, key, pipeline } = this;
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindings);
     pass.setVertexBuffer(0, geometry);
-    pass.setVertexBuffer(1, instances, 16);
-    pass.drawIndirect(instances, 0);
+    chunks.forEach(({ instances }) => {
+      instances = instances[key];
+      pass.setVertexBuffer(1, instances, 16);
+      pass.drawIndirect(instances, 0);
+    });
   }
 }
 

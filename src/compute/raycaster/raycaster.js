@@ -33,24 +33,31 @@ const _faceNormals = [
 ];
 
 class Raycaster {
-  constructor({ device, instances, precision = 0.0001, size }) {
+  constructor({ chunks, device, precision = 0.0001, size }) {
+    this.chunks = chunks;
     this.device = device;
     this.precision = precision;
-    this.query = {
-      buffer: device.createBuffer({
-        size: 9 * Float32Array.BYTES_PER_ELEMENT,
-        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC | GPUBufferUsage.STORAGE,
-      }),
-      data: new Float32Array(7),
-    };
+    {
+      const data = new Float32Array(8);
+      this.query = {
+        buffer: device.createBuffer({
+          size: 9 * Float32Array.BYTES_PER_ELEMENT,
+          usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC | GPUBufferUsage.STORAGE,
+        }),
+        data,
+        origin: data.subarray(0, 3),
+        direction: data.subarray(4, 7),
+        distance: new Uint32Array(data.buffer, 7 * Float32Array.BYTES_PER_ELEMENT, 1),
+      };
+    }
     this.rays = [];
     const workgroups = device.createBuffer({
       size: 3 * Uint32Array.BYTES_PER_ELEMENT,
       usage: GPUBufferUsage.INDIRECT | GPUBufferUsage.STORAGE,
     });
     this.pipelines = {
-      compute: new Compute({ device, instances, precision, query: this.query, size, workgroups }),
-      setup: new Setup({ device, instances, query: this.query, workgroups }),
+      compute: new Compute({ device, precision, query: this.query, size, workgroups }),
+      setup: new Setup({ device, workgroups }),
     };
   }
 
@@ -60,14 +67,17 @@ class Raycaster {
   }
 
   compute(ray) {
-    const { device, pipelines, precision, query } = this;
-    vec3.copy(query.data, ray.origin);
-    vec3.copy(query.data.subarray(4, 7), ray.direction);
+    const { chunks, device, pipelines, precision, query } = this;
+    vec3.copy(query.origin, ray.origin);
+    vec3.copy(query.direction, ray.direction);
+    query.distance[0] = 0xFFFFFFFF;
     device.queue.writeBuffer(query.buffer, 0, query.data);
     const command = device.createCommandEncoder();
     const pass = command.beginComputePass();
-    pipelines.setup.compute(pass);
-    pipelines.compute.compute(pass);
+    chunks.forEach((chunk) => {
+      pipelines.setup.compute(pass, chunk);
+      pipelines.compute.compute(pass, chunk);
+    });
     pass.end();
     command.copyBufferToBuffer(query.buffer, 28, ray.output, 0, 8);
     device.queue.submit([command.finish()]);

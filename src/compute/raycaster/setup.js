@@ -6,21 +6,12 @@ struct Instances {
   firstInstance : u32,
 }
 
-struct Query {
-  origin : vec3<f32>,
-  direction : vec3<f32>,
-  distance : u32,
-  face : u32,
-}
-
-@group(0) @binding(0) var<storage, read> opaque : Instances;
-@group(0) @binding(1) var<storage, read> transparent : Instances;
-@group(0) @binding(2) var<storage, read_write> query : Query;
-@group(0) @binding(3) var<storage, read_write> workgroups : array<u32, 3>;
+@group(0) @binding(0) var<storage, read_write> workgroups : array<u32, 3>;
+@group(1) @binding(0) var<storage, read> opaque : Instances;
+@group(1) @binding(1) var<storage, read> transparent : Instances;
 
 @compute @workgroup_size(1)
 fn main() {
-  query.distance = 0xFFFFFFFF;
   workgroups[0] = u32(ceil(f32(opaque.instanceCount + transparent.instanceCount) / 256));
   workgroups[1] = 1;
   workgroups[2] = 1;
@@ -28,7 +19,8 @@ fn main() {
 `;
 
 class RaycasterSetup {
-  constructor({ device, instances, query, workgroups }) {
+  constructor({ device, workgroups }) {
+    this.device = device;
     this.pipeline = device.createComputePipeline({
       layout: 'auto',
       compute: {
@@ -43,28 +35,32 @@ class RaycasterSetup {
       entries: [
         {
           binding: 0,
-          resource: { buffer: instances.opaque },
-        },
-        {
-          binding: 1,
-          resource: { buffer: instances.transparent },
-        },
-        {
-          binding: 2,
-          resource: { buffer: query.buffer },
-        },
-        {
-          binding: 3,
           resource: { buffer: workgroups },
         },
       ],
     });
   }
 
-  compute(pass) {
-    const { bindings, pipeline } = this;
+  compute(pass, chunk) {
+    const { bindings, device, pipeline } = this;
+    if (!chunk.bindings.raycasterSetup) {
+      chunk.bindings.raycasterSetup = device.createBindGroup({
+        layout: pipeline.getBindGroupLayout(1),
+        entries: [
+          {
+            binding: 0,
+            resource: { buffer: chunk.instances.opaque },
+          },
+          {
+            binding: 1,
+            resource: { buffer: chunk.instances.transparent },
+          },
+        ],
+      });
+    }
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindings);
+    pass.setBindGroup(1, chunk.bindings.raycasterSetup);
     pass.dispatchWorkgroups(1);
   }
 }

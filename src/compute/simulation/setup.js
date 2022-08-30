@@ -8,7 +8,6 @@ struct Uniforms {
 
 @compute @workgroup_size(1)
 fn main() {
-  uniforms.offset += 1;
   uniforms.y = (uniforms.y + 1) % ${size[1]};
 }
 `;

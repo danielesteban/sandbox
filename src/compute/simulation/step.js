@@ -1,11 +1,16 @@
-const Compute = ({ size }) => `
+const Compute = ({ extents, size }) => `
 struct Uniforms {
   offset : atomic<u32>,
   y : i32,
 }
 
-@group(0) @binding(0) var<storage, read_write> data : array<atomic<u32>, ${size[0] * size[1] * size[2]}>;
-@group(0) @binding(1) var<storage, read_write> uniforms : Uniforms;
+@group(0) @binding(0) var<storage, read_write> uniforms : Uniforms;
+@group(1) @binding(0) var<storage, read_write> data : array<atomic<u32>, ${size[0] * size[1] * size[2]}>;
+@group(1) @binding(1) var<storage, read_write> data_east : array<atomic<u32>>;
+@group(1) @binding(2) var<storage, read_write> data_west : array<atomic<u32>>;
+@group(1) @binding(3) var<storage, read_write> data_north : array<atomic<u32>>;
+@group(1) @binding(4) var<storage, read_write> data_south : array<atomic<u32>>;
+@group(1) @binding(5) var<uniform> chunk : vec2<i32>;
 
 const bottom = vec3<i32>(0, -1, 0);
 const top = vec3<i32>(0, 1, 0);
@@ -15,18 +20,68 @@ const neighbors = array<vec3<i32>, 4>(
   vec3<i32>(0, 0, 1),
   vec3<i32>(1, 0, 0),
 );
+
+const extents : vec3<i32> = vec3<i32>(${extents[0]}, ${extents[1]}, ${extents[2]});
 const size : vec3<i32> = vec3<i32>(${size[0]}, ${size[1]}, ${size[2]});
 
 fn getVoxel(pos : vec3<i32>) -> u32 {
   return u32(pos.z * size.x * size.y + pos.y * size.x + pos.x);
 }
 
-fn moveVoxel(pos : vec3<i32>, voxel : u32, value : u32, neighbor : vec3<i32>) -> bool {
-  let npos = pos + neighbor;
-  if (any(npos < vec3<i32>(0)) || any(npos >= size)) {
+fn getValue(pos : vec3<i32>) -> u32 {
+  let wpos : vec3<i32> = vec3<i32>(chunk.x, 0, chunk.y) + pos;
+  if (any(wpos < vec3<i32>(0)) || any(wpos >= extents)) {
+    return 0;
+  }
+  if (pos.x < 0) {
+    return atomicLoad(&data_west[getVoxel(pos + vec3<i32>(size.x, 0, 0))]);
+  }
+  if (pos.x >= size.x) {
+    return atomicLoad(&data_east[getVoxel(pos - vec3<i32>(size.x, 0, 0))]);
+  }
+  if (pos.z < 0) {
+    return atomicLoad(&data_south[getVoxel(pos + vec3<i32>(0, 0, size.z))]);
+  }
+  if (pos.z >= size.z) {
+    return atomicLoad(&data_north[getVoxel(pos - vec3<i32>(0, 0, size.z))]);
+  }
+  return atomicLoad(&data[getVoxel(pos)]);
+}
+
+fn moveVoxel(pos : vec3<i32>, voxel : u32, value : u32) -> bool {
+  let wpos : vec3<i32> = vec3<i32>(chunk.x, 0, chunk.y) + pos;
+  if (any(wpos < vec3<i32>(0)) || any(wpos >= extents)) {
     return false;
   }
-  if (atomicCompareExchangeWeak(&data[getVoxel(npos)], 0, value).exchanged) {
+  if (pos.x < 0) {
+    if (atomicCompareExchangeWeak(&data_west[getVoxel(pos + vec3<i32>(size.x, 0, 0))], 0, value).exchanged) {
+      atomicStore(&data[voxel], 0);
+      return true;
+    }
+    return false;
+  }
+  if (pos.x >= size.x) {
+    if (atomicCompareExchangeWeak(&data_east[getVoxel(pos - vec3<i32>(size.x, 0, 0))], 0, value).exchanged) {
+      atomicStore(&data[voxel], 0);
+      return true;
+    }
+    return false;
+  }
+  if (pos.z < 0) {
+    if (atomicCompareExchangeWeak(&data_south[getVoxel(pos + vec3<i32>(0, 0, size.z))], 0, value).exchanged) {
+      atomicStore(&data[voxel], 0);
+      return true;
+    }
+    return false;
+  }
+  if (pos.z >= size.z) {
+    if (atomicCompareExchangeWeak(&data_north[getVoxel(pos - vec3<i32>(0, 0, size.z))], 0, value).exchanged) {
+      atomicStore(&data[voxel], 0);
+      return true;
+    }
+    return false;
+  }
+  if (atomicCompareExchangeWeak(&data[getVoxel(pos)], 0, value).exchanged) {
     atomicStore(&data[voxel], 0);
     return true;
   }
@@ -37,13 +92,13 @@ fn stepSand(pos : vec3<i32>, voxel : u32, value : u32) -> bool {
   if (pos.y == 0) {
     return false;
   }
-  if (moveVoxel(pos, voxel, value, bottom)) {
+  if (moveVoxel(pos + bottom, voxel, value)) {
     return true;
   }
   let o : u32 = atomicAdd(&uniforms.offset, 1);
   for (var n : u32 = 0; n < 4; n++) {
     let neighbor : vec3<i32> = neighbors[(n + o) % 4] + bottom;
-    if (moveVoxel(pos, voxel, value, neighbor)) {
+    if (moveVoxel(pos + neighbor, voxel, value)) {
       return true;
     }
   }
@@ -60,9 +115,9 @@ fn stepWater(pos : vec3<i32>, voxel : u32, value : u32) -> bool {
     if (
       (
         pos.y == 0
-        || atomicLoad(&data[getVoxel(pos + neighbor + bottom)]) != 0
+        || getValue(pos + neighbor + bottom) != 0
       )
-      && moveVoxel(pos, voxel, value, neighbor)
+      && moveVoxel(pos + neighbor, voxel, value)
     ) {
       return true;
     }
@@ -97,13 +152,14 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
 `;
 
 class SimulationStep {
-  constructor({ data, device, size, uniforms }) {
+  constructor({ device, extents, size, uniforms }) {
+    this.device = device;
     this.pipeline = device.createComputePipeline({
       layout: 'auto',
       compute: {
         entryPoint: 'main',
         module: device.createShaderModule({
-          code: Compute({ size }),
+          code: Compute({ extents, size }),
         }),
       },
     });
@@ -112,10 +168,6 @@ class SimulationStep {
       entries: [
         {
           binding: 0,
-          resource: { buffer: data },
-        },
-        {
-          binding: 1,
           resource: { buffer: uniforms },
         },
       ],
@@ -126,10 +178,30 @@ class SimulationStep {
     ]);
   }
 
-  compute(pass) {
-    const { bindings, pipeline, workgroups } = this;
+  compute(pass, chunk) {
+    const { bindings, device, pipeline, workgroups } = this;
+    if (!chunk.bindings.simulation) {
+      chunk.bindings.simulation = device.createBindGroup({
+        layout: pipeline.getBindGroupLayout(1),
+        entries: [
+          {
+            binding: 0,
+            resource: { buffer: chunk.data },
+          },
+          ...chunk.neighbors.map(({ data }, i) => ({
+            binding: 1 + i,
+            resource: { buffer: data },
+          })),
+          {
+            binding: 5,
+            resource: { buffer: chunk.position },
+          },
+        ],
+      });
+    }
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindings);
+    pass.setBindGroup(1, chunk.bindings.simulation);
     pass.dispatchWorkgroups(workgroups[0], workgroups[1]);
   }
 }
