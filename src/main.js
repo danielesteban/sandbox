@@ -12,7 +12,7 @@ import Voxels from './render/voxels.js';
 const Main = ({ adapter, device }) => {
   const camera = new Camera({ device });
   const renderer = new Renderer({ adapter, camera, device });
-  const volume = new Volume({ device, size: vec3.fromValues(256, 64, 256) });
+  const volume = new Volume({ device, size: vec3.fromValues(320, 64, 320) });
   document.getElementById('renderer').appendChild(renderer.canvas);
   renderer.setSize(window.innerWidth, window.innerHeight);
   window.addEventListener('resize', () => (
@@ -35,8 +35,8 @@ const Main = ({ adapter, device }) => {
     background: renderer.background,
     camera,
     device,
-    position: camera.target,
     samples: renderer.samples,
+    size: volume.size,
   });
   renderer.scene.push(grid);
 

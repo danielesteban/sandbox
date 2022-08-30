@@ -1,4 +1,4 @@
-const Vertex = ({ position }) => `
+const Vertex = `
 struct VertexInput {
   @location(0) position : vec3<f32>,
 }
@@ -16,11 +16,9 @@ struct Camera {
 
 @group(0) @binding(1) var<uniform> camera : Camera;
 
-const origin : vec3<f32> = vec3<f32>(${position[0]}, ${position[1]}, ${position[2]});
-
 @vertex
 fn main(vertex : VertexInput) -> VertexOutput {
-  let mvPosition : vec4<f32> = camera.view * vec4<f32>(vertex.position + origin, 1);
+  let mvPosition : vec4<f32> = camera.view * vec4<f32>(vertex.position, 1);
   var out : VertexOutput;
   out.position = camera.projection * mvPosition;
   out.grid = vertex.position.xz;
@@ -62,28 +60,28 @@ fn main(face : FragmentInput) -> FragmentOutput {
 }
 `;
 
-const Plane = ({ device }) => {
+const Plane = ({ device, size }) => {
   const buffer = device.createBuffer({
     mappedAtCreation: true,
     size: 18 * Float32Array.BYTES_PER_ELEMENT,
     usage: GPUBufferUsage.VERTEX,
   });
   new Float32Array(buffer.getMappedRange()).set([
-    -128, 0, 128,
-    128, 0, 128,
-    128, 0, -128,
-    128, 0, -128,
-    -128, 0, -128,
-    -128, 0, 128,
+    0, 0, size[2],
+    size[0], 0, size[2],
+    size[0], 0, 0,
+    size[0], 0, 0,
+    0, 0, 0,
+    0, 0, size[2],
   ]);
   buffer.unmap();
   return buffer;
 };
 
 class Grid {
-  constructor({ background, camera, device, position, samples }) {
+  constructor({ background, camera, device, samples, size }) {
     this.device = device;
-    this.geometry = Plane({ device });
+    this.geometry = Plane({ device, size });
     this.pipeline = device.createRenderPipeline({
       layout: 'auto',
       vertex: {
@@ -101,7 +99,7 @@ class Grid {
         ],
         entryPoint: 'main',
         module: device.createShaderModule({
-          code: Vertex({ position }),
+          code: Vertex,
         }),
       },
       fragment: {
