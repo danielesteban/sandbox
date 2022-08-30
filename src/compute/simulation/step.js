@@ -48,65 +48,45 @@ fn getValue(pos : vec3<i32>) -> u32 {
   return atomicLoad(&data[getVoxel(pos)]);
 }
 
-fn moveVoxel(pos : vec3<i32>, voxel : u32, value : u32) -> bool {
+fn moveVoxel(pos : vec3<i32>, value : u32) -> bool {
   let wpos : vec3<i32> = vec3<i32>(chunk.x, 0, chunk.y) + pos;
   if (any(wpos < vec3<i32>(0)) || any(wpos >= extents)) {
     return false;
   }
   if (pos.x < 0) {
-    if (atomicCompareExchangeWeak(&data_west[getVoxel(pos + vec3<i32>(size.x, 0, 0))], 0, value).exchanged) {
-      atomicStore(&data[voxel], 0);
-      return true;
-    }
-    return false;
+    return atomicCompareExchangeWeak(&data_west[getVoxel(pos + vec3<i32>(size.x, 0, 0))], 0, value).exchanged;
   }
   if (pos.x >= size.x) {
-    if (atomicCompareExchangeWeak(&data_east[getVoxel(pos - vec3<i32>(size.x, 0, 0))], 0, value).exchanged) {
-      atomicStore(&data[voxel], 0);
-      return true;
-    }
-    return false;
+    return atomicCompareExchangeWeak(&data_east[getVoxel(pos - vec3<i32>(size.x, 0, 0))], 0, value).exchanged;
   }
   if (pos.z < 0) {
-    if (atomicCompareExchangeWeak(&data_south[getVoxel(pos + vec3<i32>(0, 0, size.z))], 0, value).exchanged) {
-      atomicStore(&data[voxel], 0);
-      return true;
-    }
-    return false;
+    return atomicCompareExchangeWeak(&data_south[getVoxel(pos + vec3<i32>(0, 0, size.z))], 0, value).exchanged;
   }
   if (pos.z >= size.z) {
-    if (atomicCompareExchangeWeak(&data_north[getVoxel(pos - vec3<i32>(0, 0, size.z))], 0, value).exchanged) {
-      atomicStore(&data[voxel], 0);
-      return true;
-    }
-    return false;
+    return atomicCompareExchangeWeak(&data_north[getVoxel(pos - vec3<i32>(0, 0, size.z))], 0, value).exchanged;
   }
-  if (atomicCompareExchangeWeak(&data[getVoxel(pos)], 0, value).exchanged) {
-    atomicStore(&data[voxel], 0);
-    return true;
-  }
-  return false;
+  return atomicCompareExchangeWeak(&data[getVoxel(pos)], 0, value).exchanged;
 }
 
-fn stepSand(pos : vec3<i32>, voxel : u32, value : u32) -> bool {
+fn stepSand(pos : vec3<i32>, value : u32) -> bool {
   if (pos.y == 0) {
     return false;
   }
-  if (moveVoxel(pos + bottom, voxel, value)) {
+  if (moveVoxel(pos + bottom, value)) {
     return true;
   }
   let o : u32 = atomicAdd(&uniforms.offset, 1);
   for (var n : u32 = 0; n < 4; n++) {
     let neighbor : vec3<i32> = neighbors[(n + o) % 4] + bottom;
-    if (moveVoxel(pos + neighbor, voxel, value)) {
+    if (moveVoxel(pos + neighbor, value)) {
       return true;
     }
   }
   return false;
 }
 
-fn stepWater(pos : vec3<i32>, voxel : u32, value : u32) -> bool {
-  if (stepSand(pos, voxel, value)) {
+fn stepWater(pos : vec3<i32>, value : u32) -> bool {
+  if (stepSand(pos, value)) {
     return true;
   }
   let o : u32 = atomicAdd(&uniforms.offset, 1);
@@ -117,13 +97,12 @@ fn stepWater(pos : vec3<i32>, voxel : u32, value : u32) -> bool {
         pos.y == 0
         || getValue(pos + neighbor + bottom) != 0
       )
-      && moveVoxel(pos + neighbor, voxel, value)
+      && moveVoxel(pos + neighbor, value)
     ) {
       return true;
     }
   }
   if ((atomicLoad(&data[getVoxel(pos + top)]) & 0xFF) == 1) {
-    atomicStore(&data[voxel], 0);
     return true;
   }
   return false;
@@ -140,13 +119,17 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   if (value == 0) {
     return;
   }
+  var hasMoved : bool;
   switch (value & 0xFF) {
     default {
-      stepSand(pos, voxel, value);
+      hasMoved = stepSand(pos, value);
     }
     case 2 {
-      stepWater(pos, voxel, value);
+      hasMoved = stepWater(pos, value);
     }
+  }
+  if (hasMoved) {
+    atomicStore(&data[voxel], 0);
   }
 }
 `;
