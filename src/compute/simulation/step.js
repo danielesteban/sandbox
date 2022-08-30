@@ -48,7 +48,7 @@ fn getValue(pos : vec3<i32>) -> u32 {
   return atomicLoad(&data[getVoxel(pos)]);
 }
 
-fn moveVoxel(pos : vec3<i32>, value : u32) -> bool {
+fn setValue(pos : vec3<i32>, value : u32) -> bool {
   let wpos : vec3<i32> = vec3<i32>(chunk.x, 0, chunk.y) + pos;
   if (any(wpos < vec3<i32>(0)) || any(wpos >= extents)) {
     return false;
@@ -72,13 +72,13 @@ fn stepSand(pos : vec3<i32>, value : u32) -> bool {
   if (pos.y == 0) {
     return false;
   }
-  if (moveVoxel(pos + bottom, value)) {
+  if (setValue(pos + bottom, value)) {
     return true;
   }
   let o : u32 = atomicAdd(&uniforms.offset, 1);
   for (var n : u32 = 0; n < 4; n++) {
     let neighbor : vec3<i32> = neighbors[(n + o) % 4] + bottom;
-    if (moveVoxel(pos + neighbor, value)) {
+    if (setValue(pos + neighbor, value)) {
       return true;
     }
   }
@@ -97,7 +97,7 @@ fn stepWater(pos : vec3<i32>, value : u32) -> bool {
         pos.y == 0
         || getValue(pos + neighbor + bottom) != 0
       )
-      && moveVoxel(pos + neighbor, value)
+      && setValue(pos + neighbor, value)
     ) {
       return true;
     }
