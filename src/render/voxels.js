@@ -1,4 +1,4 @@
-import { vec3 } from 'gl-matrix';
+import { vec2 } from 'gl-matrix';
 
 const Vertex = `
 struct VertexInput {
@@ -96,7 +96,7 @@ const Face = ({ device }) => {
 };
 
 
-const _origin = vec3.create();
+const _camera = vec2.create();
 
 class Voxels {
   constructor({
@@ -107,10 +107,19 @@ class Voxels {
     opacity = 1, 
     samples,
   }) {
+    const isTransparent = opacity !== 1;
     this.camera = camera;
     this.device = device;
     this.geometry = geometry || Face({ device });
-    this.transparent = opacity !== 1;
+    this.instances = chunks.reduce((instances, { instances: { [isTransparent ? 'transparent' : 'opaque']: buffer }, origin }) => {
+      instances.push({ buffer, distance: 0, origin });
+      return instances;
+    }, []);
+    this.sorting = isTransparent ? (
+      (a, b) => (b.distance - a.distance)
+    ) : (
+      (a, b) => (a.distance - b.distance)
+    );
     this.pipeline = device.createRenderPipeline({
       layout: 'auto',
       vertex: {
@@ -155,7 +164,7 @@ class Voxels {
         targets: [
           {
             format: 'rgba16float',
-            ...(this.transparent ? {
+            ...(isTransparent ? {
               blend: {
                 color: {
                   srcFactor: 'src-alpha',
@@ -195,19 +204,15 @@ class Voxels {
         },
       ],
     });
-    this.instances = chunks.reduce((instances, { instances: { [this.transparent ? 'transparent' : 'opaque']: buffer }, origin }) => {
-      instances.push({ buffer, distance: 0, origin });
-      return instances;
-    }, []);
   }
 
   render(pass) {
-    const { bindings, camera, geometry, instances, pipeline, transparent } = this;
+    const { bindings, camera, geometry, instances, pipeline, sorting } = this;
+    vec2.set(_camera, camera.position[0], camera.position[2]);
     instances.forEach((instance) => {
-      vec3.set(_origin, instance.origin[0], camera.position[1], instance.origin[1]);
-      instance.distance = vec3.distance(camera.position, _origin);
+      instance.distance = vec2.distance(instance.origin, _camera);
     });
-    instances.sort(({ distance: a }, { distance: b }) => transparent ? b - a : a - b);
+    instances.sort(sorting);
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindings);
     pass.setVertexBuffer(0, geometry);
