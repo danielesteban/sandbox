@@ -1,3 +1,5 @@
+import { vec3 } from 'gl-matrix';
+
 const Vertex = `
 struct VertexInput {
   @location(0) position : vec3<f32>,
@@ -93,6 +95,9 @@ const Face = ({ device }) => {
   return buffer;
 };
 
+
+const _origin = vec3.create();
+
 class Voxels {
   constructor({
     camera,
@@ -102,9 +107,10 @@ class Voxels {
     opacity = 1, 
     samples,
   }) {
-    this.chunks = chunks;
+    this.camera = camera;
     this.device = device;
     this.geometry = geometry || Face({ device });
+    this.transparent = opacity !== 1;
     this.pipeline = device.createRenderPipeline({
       layout: 'auto',
       vertex: {
@@ -149,7 +155,7 @@ class Voxels {
         targets: [
           {
             format: 'rgba16float',
-            ...(opacity !== 1 ? {
+            ...(this.transparent ? {
               blend: {
                 color: {
                   srcFactor: 'src-alpha',
@@ -189,18 +195,25 @@ class Voxels {
         },
       ],
     });
-    this.key = opacity !== 1 ? 'transparent' : 'opaque';
+    this.instances = chunks.reduce((instances, { instances: { [this.transparent ? 'transparent' : 'opaque']: buffer }, origin }) => {
+      instances.push({ buffer, distance: 0, origin });
+      return instances;
+    }, []);
   }
 
   render(pass) {
-    const { bindings, chunks, geometry, key, pipeline } = this;
+    const { bindings, camera, geometry, instances, pipeline, transparent } = this;
+    instances.forEach((instance) => {
+      vec3.set(_origin, instance.origin[0], camera.position[1], instance.origin[1]);
+      instance.distance = vec3.distance(camera.position, _origin);
+    });
+    instances.sort(({ distance: a }, { distance: b }) => transparent ? b - a : a - b);
     pass.setPipeline(pipeline);
     pass.setBindGroup(0, bindings);
     pass.setVertexBuffer(0, geometry);
-    chunks.forEach(({ instances }) => {
-      instances = instances[key];
-      pass.setVertexBuffer(1, instances, 16);
-      pass.drawIndirect(instances, 0);
+    instances.forEach((instance) => {
+      pass.setVertexBuffer(1, instance.buffer, 16);
+      pass.drawIndirect(instance.buffer, 0);
     });
   }
 }

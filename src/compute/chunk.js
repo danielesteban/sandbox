@@ -28,6 +28,11 @@ class Chunk {
       transparent: Instances({ device, size }),
     };
 
+    this.origin = new Float32Array([
+      position[0] * size[0] + size[0] * 0.5,
+      position[1] * size[2] + size[2] * 0.5
+    ]);
+
     this.position = device.createBuffer({
       mappedAtCreation: true,
       size: 2 * Int32Array.BYTES_PER_ELEMENT,
