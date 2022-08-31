@@ -71,6 +71,7 @@ const Main = ({ adapter, device }) => {
   const input = new Input({ position: camera.target, target: renderer.canvas });
   const toolbar = new Toolbar({ renderer });
 
+  const brush = vec3.create();
   const ground = [
     [
       vec3.fromValues(volume.size[0] * -1, 0, volume.size[2] * 2),
@@ -83,7 +84,6 @@ const Main = ({ adapter, device }) => {
       vec3.fromValues(volume.size[0] * -1, 0, volume.size[2] * 2)
     ],
   ];
-  const position = vec3.create();
 
   const animate = () => {
     requestAnimationFrame(animate);
@@ -107,15 +107,15 @@ const Main = ({ adapter, device }) => {
       volume.reset(command);
     }
     if (input.buttons.primary) {
-      vec3.copy(position, cursor.position);
+      vec3.copy(brush, cursor.position);
       const { color, noise, radius } = toolbar.tools[toolbar.tool];
       let value = 0;
       if (toolbar.tool !== 2) {
-        position[1] = Math.min(position[1] + radius * 3, volume.size[1] - 1);
+        brush[1] = Math.min(brush[1] + radius * 3, volume.size[1] - 1);
         value = (color << 8) + (toolbar.tool + 1);
       }
       volume.update.compute(
-        command, position, noise || 0, radius, value
+        command, brush, noise || 0, radius, value
       );
     }
     volume.compute(command);
