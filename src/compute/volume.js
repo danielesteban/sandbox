@@ -1,4 +1,5 @@
 import Chunk from './chunk.js';
+import Generator from './generator.js';
 import Mesher from './mesher.js';
 import Raycaster from './raycaster/raycaster.js';
 import Simulation from './simulation/simulation.js';
@@ -45,6 +46,7 @@ class Volume {
     }
     this.size = size;
 
+    this.generator = new Generator({ chunks: this.chunks, device, size: chunkSize });
     this.mesher = new Mesher({ chunks: this.chunks, device, extents: size, size: chunkSize });
     this.raycaster = new Raycaster({ chunks: this.chunks, device, size: chunkSize });
     this.simulation = new Simulation({ chunks: this.chunks, device, extents: size, size: chunkSize });

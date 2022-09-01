@@ -10,7 +10,6 @@ class Input {
     this.buttons = {
       primary: false,
       secondary: false,
-      reset: false,
     };
     this.view = {
       hasUpdated: false,
@@ -38,7 +37,7 @@ class Input {
     target.addEventListener('mousedown', this.onMouseDown.bind(this), false);
     window.addEventListener('mousemove', this.onMouseMove.bind(this), false);
     window.addEventListener('mouseup', this.onMouseUp.bind(this), false);
-    window.addEventListener('wheel', this.onMouseWheel.bind(this), { passive: false });
+    target.addEventListener('wheel', this.onMouseWheel.bind(this), { passive: false });
   }
 
   onBlur() {
@@ -69,8 +68,11 @@ class Input {
       case 'd':
         keyboard[0] = -1;
         break;
-      case 'escape':
-        if (confirm('Are you sure?')) buttons.reset = true;
+      case 'q':
+        keyboard[1] = -1;
+        break;
+      case 'e':
+        keyboard[1] = 1;
         break;
       default:
         break;
@@ -91,6 +93,12 @@ class Input {
         break;
       case 'd':
         if (keyboard[0] < 0) keyboard[0] = 0;
+        break;
+      case 'q':
+        if (keyboard[1] < 0) keyboard[1] = 0;
+        break;
+      case 'e':
+        if (keyboard[1] > 0) keyboard[1] = 0;
         break;
       default:
         break;

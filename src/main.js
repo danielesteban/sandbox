@@ -5,27 +5,26 @@ import Cursor from './render/cursor.js';
 import Grid from './render/grid.js';
 import Input from './render/input.js';
 import Renderer from './render/renderer.js';
-import Toolbar from './ui/toolbar.js';
 import Volume from './compute/volume.js';
 import Voxels from './render/voxels.js';
+import UI from './ui/ui.svelte';
+import * as UIState from './ui/state.js';
 
 const Main = ({ adapter, device }) => {
   const camera = new Camera({ device });
   const renderer = new Renderer({ adapter, camera, device });
-  const volume = new Volume({
-    device,
-    size: vec3.fromValues(512, 96, 512),
-    chunkSize: vec3.fromValues(256, 96, 256),
-  });
   document.getElementById('renderer').appendChild(renderer.canvas);
   renderer.setSize(window.innerWidth, window.innerHeight);
   window.addEventListener('resize', () => (
     renderer.setSize(window.innerWidth, window.innerHeight)
   ), false);
 
-  const center = vec3.clone(volume.size);
-  vec3.floor(center, vec3.scale(center, center, 0.5));
-  vec3.set(camera.target, center[0], 0, center[2]);
+  const volume = new Volume({
+    device,
+    size: vec3.fromValues(512, 96, 512),
+    chunkSize: vec3.fromValues(256, 96, 256),
+  });
+  vec3.set(camera.target, volume.size[0] * 0.5, 0, volume.size[2] * 0.5);
 
   const opaque = new Voxels({
     camera,
@@ -61,17 +60,10 @@ const Main = ({ adapter, device }) => {
   });
   renderer.scene.push(cursor);
 
-  let clock = performance.now() / 1000;
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      clock = performance.now() / 1000;
-    }
-  }, false);
-
-  const input = new Input({ position: camera.target, target: renderer.canvas });
-  const toolbar = new Toolbar({ renderer });
-
-  const brush = vec3.create();
+  const atoms = { sand: 1, water: 2 };
+  const brush = { position: vec3.create() };
+  const colors = { sand: new Uint32Array(4) };
+  const generator = { seed: new Int32Array(3) };
   const ground = [
     [
       vec3.fromValues(volume.size[0] * -1, 0, volume.size[2] * 2),
@@ -84,6 +76,49 @@ const Main = ({ adapter, device }) => {
       vec3.fromValues(volume.size[0] * -1, 0, volume.size[2] * 2)
     ],
   ];
+  const input = new Input({ position: camera.target, target: renderer.canvas });
+  {
+    const map = (state, data, key) => state[key].subscribe((value) => { data[key] = value; });
+    map(UIState.brush, brush, 'atom');
+    map(UIState.brush, brush, 'noise');
+    map(UIState.brush, brush, 'radius');
+    UIState.colors.sand.forEach((v, i) => map(UIState.colors.sand, colors.sand, i));
+    map(UIState.colors, colors, 'water');
+    UIState.generator.seed.forEach((v, i) => map(UIState.generator.seed, generator.seed, i));
+    map(UIState.generator, generator, 'waterLevel');
+  }
+  UIState.colors.background.subscribe((value) => (
+    renderer.setBackground(value)
+  ));
+  UIState.generator.compute.subscribe((value) => {
+    if (value) {
+      const command = device.createCommandEncoder();
+      volume.generator.compute(
+        command,
+        colors.sand,
+        generator.seed,
+        colors.water,
+        generator.waterLevel
+      );
+      device.queue.submit([command.finish()]);
+      UIState.generator.compute.set(false);
+    }
+  });
+  UIState.generator.reset.subscribe((value) => {
+    if (value) {
+      const command = device.createCommandEncoder();
+      volume.reset(command);
+      device.queue.submit([command.finish()]);
+      UIState.generator.reset.set(false);
+    }
+  });
+
+  let clock = performance.now() / 1000;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      clock = performance.now() / 1000;
+    }
+  }, false);
 
   const animate = () => {
     requestAnimationFrame(animate);
@@ -102,20 +137,17 @@ const Main = ({ adapter, device }) => {
     }
 
     const command = device.createCommandEncoder();
-    if (input.buttons.reset) {
-      input.buttons.reset = false;
-      volume.reset(command);
-    }
     if (input.buttons.primary) {
-      vec3.copy(brush, cursor.position);
-      const { color, noise, radius } = toolbar.tools[toolbar.tool];
+      const { atom, noise, position, radius } = brush;
+      vec3.copy(position, cursor.position);
       let value = 0;
-      if (toolbar.tool !== 2) {
-        brush[1] = Math.min(brush[1] + radius * 3, volume.size[1] - 1);
-        value = (color << 8) + (toolbar.tool + 1);
+      if (atom === 'sand' || atom === 'water') {
+        const color = atom === 'sand' ? colors[atom][0] : colors[atom];
+        position[1] = Math.min(position[1] + radius * 3, volume.size[1] - 1);
+        value = (color << 8) + atoms[atom];
       }
       volume.update.compute(
-        command, brush, noise || 0, radius, value
+        command, position, atom !== 'void' ? noise : 0, radius, value
       );
     }
     volume.compute(command);
@@ -164,6 +196,7 @@ const GPU = async () => {
 
 GPU()
   .then(Main)
+  .then(() => new UI({ target: document.getElementById('ui') }))
   .catch((e) => {
     console.error(e);
     document.getElementById('canary').classList.add('enabled');

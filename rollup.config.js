@@ -6,6 +6,7 @@ import livereload from 'rollup-plugin-livereload';
 import postcss from 'rollup-plugin-postcss';
 import resolve from '@rollup/plugin-node-resolve';
 import serve from 'rollup-plugin-serve';
+import svelte from 'rollup-plugin-svelte';
 import { terser } from 'rollup-plugin-terser';
 
 const outputPath = path.resolve(__dirname, 'dist');
@@ -23,13 +24,14 @@ export default {
     format: 'iife',
   },
   plugins: [
-    resolve({
-      browser: true,
-    }),
     postcss({
       extract: 'main.css',
       minimize: production,
     }),
+    resolve({
+      browser: true,
+    }),
+    svelte(),
     html({
       template: ({ files }) => (
         fs.readFileSync(path.join(__dirname, 'src', 'index.html'), 'utf8')

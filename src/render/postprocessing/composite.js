@@ -26,7 +26,7 @@ fn main(@builtin(position) uv : vec4<f32>) -> @location(0) vec4<f32> {
   let blurVignette : f32 = 1 - smoothstep(-0.2, 0.2, 0.4 - dist) * 0.6;
   let blurIntensity : f32 = (1 - exp(-blurDensity * blurDensity * depth * depth)) * blurVignette;
   let out : vec3<f32> = mix(color, blur, blurIntensity);
-  return vec4<f32>(linearTosRGB(out * vignette + mix(-0.005, 0.005, noise)), 1);
+  return vec4<f32>(linearTosRGB(out * vignette + mix(-0.003, 0.003, noise)), 1);
 }
 `;
 
