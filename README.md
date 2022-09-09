@@ -1,8 +1,6 @@
 [sandbox](https://github.com/danielesteban/sandbox)
 ==
 
-> Works only in Chrome Canary
-
 [![sandbox](screenshot.png)](https://sandbox.gatunes.com)
 
 ### Dev environment
