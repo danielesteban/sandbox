@@ -41,7 +41,7 @@ class Raycaster {
       const data = new Float32Array(8);
       this.query = {
         buffer: device.createBuffer({
-          size: 9 * Float32Array.BYTES_PER_ELEMENT,
+          size: 12 * Float32Array.BYTES_PER_ELEMENT,
           usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC | GPUBufferUsage.STORAGE,
         }),
         data,

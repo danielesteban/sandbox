@@ -10,8 +10,8 @@
 git clone https://github.com/danielesteban/sandbox.git
 cd sandbox
 # install dependencies:
-npm install
+pnpm install
 # start environment:
-npm start
+pnpm start
 # open http://localhost:8080/ in your browser
 ```

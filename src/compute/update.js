@@ -57,7 +57,7 @@ class Update {
       const data = new Int32Array(6);
       this.input = {
         buffer: device.createBuffer({
-          size: data.byteLength,
+          size: 8 * Int32Array.BYTES_PER_ELEMENT,
           usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.STORAGE,
         }),
         data,

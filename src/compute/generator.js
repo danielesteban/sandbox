@@ -76,7 +76,7 @@ class Generator {
       const data = new Uint32Array(9);
       this.uniforms = {
         buffer: device.createBuffer({
-          size: 9 * Uint32Array.BYTES_PER_ELEMENT,
+          size: 12 * Uint32Array.BYTES_PER_ELEMENT,
           usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM,
         }),
         data,

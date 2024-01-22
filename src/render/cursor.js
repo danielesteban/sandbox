@@ -16,11 +16,11 @@ struct Camera {
 }
 
 @group(0) @binding(0) var<uniform> camera : Camera;
-@group(0) @binding(1) var<uniform> position : vec3<f32>;
+@group(0) @binding(1) var<uniform> cursor : vec3<f32>;
 
 @vertex
 fn main(vertex : VertexInput) -> VertexOutput {
-  let mvPosition : vec4<f32> = camera.view * vec4<f32>(vertex.position + position, 1);
+  let mvPosition : vec4<f32> = camera.view * vec4<f32>(vertex.position + cursor, 1);
   var out : VertexOutput;
   out.position = camera.projection * mvPosition;
   out.normal = vertex.normal;

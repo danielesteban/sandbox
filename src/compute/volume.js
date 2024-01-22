@@ -15,11 +15,17 @@ class Volume {
         throw new Error('Size must be multiple of ChunkSize');
       }
       const chunks = [size[0] / chunkSize[0], size[2] / chunkSize[2]];
-      const edge = { data: device.createBuffer({ size: 4, usage: GPUBufferUsage.STORAGE }) };
+      const edges = Array.from({ length: 4 }, () => ({ data: device.createBuffer({ size: 4, usage: GPUBufferUsage.STORAGE }) }));
       const map = new Map();
       const load = (position) => {
-        if (position[0] < 0 || position[1] < 0 || position[0] >= chunks[0] || position[1] >= chunks[1]) {
-          return edge;
+        if (position[0] < 0) {
+          return edges[0];
+        } else if (position[1] < 0) {
+          return edges[1];
+        } else if (position[0] >= chunks[0]) {
+          return edges[2];
+        } else if (position[1] >= chunks[1]) {
+          return edges[3];
         }
         const key = `${position[0]}:${position[1]}`;
         let chunk = map.get(key);
