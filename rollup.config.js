@@ -51,12 +51,6 @@ export default {
       copy({
         targets: [{ src: 'screenshot.png', dest: 'dist' }],
       }),
-      {
-        name: 'cname',
-        writeBundle() {
-          fs.writeFileSync(path.join(outputPath, 'CNAME'), 'sandbox.gatunes.com');
-        },
-      },
     ] : [
       serve({
         contentBase: outputPath,
